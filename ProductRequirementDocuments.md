@@ -1,0 +1,354 @@
+# PRD — ABCLIV · Convertisseur d'images web
+**Version** : 1.3  
+**Date** : 2026-02-24  
+**Statut** : En cours de développement  
+**Owner** : À définir
+
+---
+
+## ⚠️ INSTRUCTIONS POUR L'IA — LIRE EN PREMIER
+
+> Ce document est le contrat de développement. Toute décision technique, UX ou fonctionnelle **non explicitement décrite ici doit faire l'objet d'une question à l'utilisateur avant toute implémentation**.
+
+**Règles absolues pour l'IA :**
+
+1. **Ne jamais supposer.** Si une information manque (librairie, comportement, design, route API, nom de variable), poser la question avant d'écrire du code.
+2. **Ne jamais remplacer une dépendance existante** sans demander (ex : remplacer `multer` par autre chose, `exec` par `spawn`, etc.).
+3. **Ne jamais modifier l'architecture des fichiers** sans demander (ex : diviser `server.js` en modules, ajouter un dossier `src/`, etc.).
+4. **Ne jamais ajouter de dépendance npm** non listée dans ce PRD sans demander.
+5. **Ne jamais modifier le design ou les variables CSS** sans demander.
+6. **Ne jamais créer de nouveaux fichiers** (routes, composants, configs) sans demander.
+7. **Ne jamais modifier le `Dockerfile` ou `docker-compose.yml`** sans demander.
+8. **Signaler toute ambiguïté** dans le PRD avant d'écrire du code, pas après.
+9. **Ne pas "améliorer" le code existant** de sa propre initiative — uniquement implémenter ce qui est demandé.
+10. **Toujours montrer le diff ou le code modifié** avant de proposer de l'appliquer, sauf demande contraire.
+
+---
+
+## 1. Vue d'ensemble
+
+### 1.1 Nom du projet
+**ABCLIV**
+
+### 1.2 Description
+Application web locale de conversion d'images. L'utilisateur dépose des images dans une interface, choisit un format de sortie et une qualité, puis télécharge les fichiers convertis. Tout est traité en local dans Docker, aucune donnée ne quitte le serveur.
+
+### 1.3 Objectif principal
+Permettre la conversion de formats d'images courants **et** du format Apple HEIC vers JPEG, PNG, WebP ou AVIF, via une interface web simple et sans installation côté utilisateur.
+
+### 1.4 Utilisateurs cibles
+Usage personnel / interne. Pas d'authentification. Pas de multi-tenant. Pas de SaaS.
+
+---
+
+## 2. Stack technique — IMMUABLE
+
+> ⚠️ Ne pas modifier ces choix sans accord explicite.
+
+### 2.1 Backend
+| Élément | Valeur fixée |
+|---|---|
+| Runtime | Node.js 20 (image `node:20-bookworm-slim`) |
+| Framework | Express 4.x |
+| Upload | `multer` 1.4.5-lts.1 |
+| UUID | `uuid` 9.x |
+| Conversion HEIC | Binaire système `heif-convert` (package `libheif-examples`) |
+| Conversion autres formats | Binaire système `convert` (ImageMagick 6.x) ; sous Windows `magick` (ImageMagick 7), configurable via `IMAGEMAGICK_CMD` |
+| Appels système | `child_process.exec` (pas `spawn`, pas `execFile`) |
+| Port | `3000` (configurable via `process.env.PORT`) |
+
+### 2.2 Frontend
+| Élément | Valeur fixée |
+|---|---|
+| Technologie | HTML/CSS/JS **vanilla** — pas de framework (pas React, pas Vue) |
+| Fichier unique | `public/index.html` — tout CSS et JS dans ce fichier |
+| Fonts | `Syne` (Google Fonts) pour le texte, `DM Mono` (Google Fonts) pour le code/mono |
+| Pas de bundler | Pas de Webpack, Vite, etc. |
+
+### 2.3 Infrastructure
+| Élément | Valeur fixée |
+|---|---|
+| Conteneurisation | Docker + Docker Compose v3.8 |
+| Fichier Compose | `docker-compose.yml` à la racine |
+| Dockerfile | `Dockerfile` à la racine |
+| Volumes | `uploads_data` et `converted_data` (Docker named volumes) |
+| Pas de reverse proxy | Pas de Nginx, pas de Caddy sauf demande explicite |
+
+### 2.4 Structure des fichiers — FIGÉE
+```
+image-converter/
+├── Dockerfile
+├── docker-compose.yml
+├── package.json
+├── server.js          ← Backend (fichier unique, pas de split)
+├── PRD.md
+├── README.md
+├── uploads/           ← Créé automatiquement au runtime
+└── public/
+    ├── index.html     ← Frontend (fichier unique)
+    └── logo.png       ← Logo du header (optionnel)
+```
+
+> **Interdiction** de créer `src/`, `routes/`, `controllers/`, `middleware/`, ou tout autre sous-dossier sans accord.
+
+---
+
+## 3. Fonctionnalités implémentées (v1.0)
+
+Ces fonctionnalités existent et **ne doivent pas être modifiées** sauf demande explicite.
+
+### 3.1 Upload de fichiers
+- Drag & drop sur la zone dédiée
+- Clic pour ouvrir le sélecteur de fichiers natif
+- Maximum **20 fichiers** par batch
+- Taille maximale par fichier : **100 MB**
+- Dédoublonnage par nom + taille (côté frontend)
+
+### 3.2 Formats d'entrée acceptés
+`.jpg`, `.jpeg`, `.png`, `.webp`, `.avif`, `.heic`, `.tiff`, `.bmp`, `.gif`
+
+### 3.3 Formats de sortie disponibles
+`jpeg`, `png`, `webp`, `avif`
+
+### 3.4 Paramètres de conversion
+- **Format** : sélecteur `<select>` avec les 4 options ci-dessus, défaut `webp`
+- **Curseur (Qualité / Résolution)** : slider `<input type="range">` de **0 à 100**, défaut `85`
+  - **PNG** : le curseur contrôle la **résolution** (pourcentage des dimensions). 100 % = taille d’origine, 50 % = moitié des dimensions, 5 % minimum. PNG généré **sans perte** (pas de réduction de couleurs).
+  - **JPEG, WebP, AVIF** : le curseur contrôle la **qualité** de compression (0 = plus petit / plus compressé, 100 = meilleure qualité).
+
+### 3.5 Logique de conversion (backend)
+Pipeline exact — **ne pas modifier** :
+
+```
+HEIC → heif-convert → temp.jpg → [si format ≠ jpeg] ImageMagick → output
+Autres → ImageMagick directement → output
+```
+
+- Fallback HEIC : si `heif-convert` échoue, tentative ImageMagick direct
+- **Métadonnées** : `-strip` appliqué à toutes les conversions (suppression EXIF, profils ICC, etc.).
+- **PNG** : réduction de résolution en % selon le curseur (5–100 %), compression PNG niveau 9, sans perte de qualité des couleurs.
+- Les fichiers uploadés sont supprimés immédiatement après conversion
+- Les fichiers convertis sont stockés dans `converted/` avec un nom UUID
+
+### 3.6 Nettoyage automatique
+- Interval : toutes les **15 minutes**
+- Supprime les fichiers de `uploads/` et `converted/` de plus de **1 heure**
+
+### 3.7 Téléchargement et visualisation
+- Bouton **Visualiser** par fichier converti : ouvre l'image dans un nouvel onglet
+- Bouton **Télécharger** individuel par fichier converti
+- Bouton "Tout télécharger" visible si ≥ 2 fichiers convertis avec succès
+- Le "Tout télécharger" déclenche les téléchargements en séquence avec un délai de **300ms** entre chaque
+
+### 3.8 Interface — composants existants
+| Composant | Description |
+|---|---|
+| Header | Image **logo.png** (public/), hauteur 4rem ; texte **« Image converter »** en Arial 2.25rem ; description à droite ; bouton **Tout réinitialiser** |
+| Badges formats | Ligne de badges des formats supportés (HEIC en jaune accent) |
+| Drop zone | Zone centrale avec icône, titre, sous-titre |
+| File queue | Liste des fichiers sélectionnés : **miniature** (thumbnail) par image, extension, nom, taille, bouton suppression |
+| Settings bar | Apparaît après sélection de fichiers : format + qualité + bouton Convertir |
+| Progress section | Barre de progression réelle (Conversion 1/N…, 2/N…) ; statut **par image** : En attente → Conversion en cours… → Converti / Erreur |
+| Results section | Liste des résultats succès/erreur ; pour chaque succès : bouton **Visualiser** (nouvel onglet) + bouton **Télécharger** ; "Tout télécharger" si ≥ 2 succès |
+| Footer | Mention locale + libs utilisées |
+
+---
+
+## 4. Design system — IMMUABLE
+
+> Ne pas modifier les variables CSS sans accord.
+
+### 4.1 Couleurs
+```css
+--bg: #0c0c0f;
+--surface: #141418;
+--surface2: #1c1c22;
+--border: #2a2a35;
+--accent: #e8ff47;       /* Jaune-vert, couleur principale */
+--accent2: #ff6b35;      /* Orange, non encore utilisé en v1 */
+--text: #f0f0f5;
+--text-muted: #7a7a8c;
+--success: #4ade80;
+--error: #f87171;
+--radius: 12px;
+```
+
+### 4.2 Typographie
+- **Display / UI** : `Syne` (Google Fonts), weights 400/600/700/800
+- **Code / Mono / Labels** : `DM Mono` (Google Fonts), weights 400/500
+
+### 4.3 Fond
+Grille CSS via `body::before` avec `background-image` double gradient, `background-size: 40px 40px`, `opacity: 0.3`.
+
+### 4.4 Animations existantes
+- `@keyframes slideIn` : apparition des file-items et result-items (translateY -8px → 0, opacity 0 → 1, 0.2s)
+- Transition hover drop-zone : scale, border-color, background
+- Progress bar : transition width 0.3s ease ; progression réelle (conversion fichier par fichier)
+
+---
+
+## 5. API Backend
+
+### 5.1 Routes existantes
+| Méthode | Route | Description |
+|---|---|---|
+| `GET` | `/*` | Sert les fichiers statiques de `public/` |
+| `GET` | `/converted/*` | Sert les fichiers convertis |
+| `POST` | `/api/convert` | Conversion (multipart/form-data) |
+
+### 5.2 POST /api/convert
+**Request :**
+- `Content-Type: multipart/form-data`
+- Champ `images` : tableau de fichiers (max 20)
+- Champ `format` : string (`jpeg` | `png` | `webp` | `avif`), défaut `jpeg`
+- Champ `quality` : number (10–100), défaut `85`
+
+**Response success (200) :**
+```json
+{
+  "results": [
+    {
+      "originalName": "photo.heic",
+      "downloadName": "photo.jpg",
+      "url": "/converted/<uuid>.jpg",
+      "size": 204800,
+      "format": "jpeg"
+    }
+  ],
+  "errors": [
+    {
+      "file": "bad.heic",
+      "error": "Conversion HEIC échouée: ..."
+    }
+  ]
+}
+```
+
+**Erreurs (4xx) :**
+```json
+{ "error": "Aucun fichier uploadé" }
+{ "error": "Format de sortie invalide: xxx" }
+```
+
+---
+
+## 6. Variables d'environnement
+
+| Variable | Valeur par défaut | Description |
+|---|---|---|
+| `PORT` | `3000` | Port d'écoute Express |
+| `NODE_ENV` | `production` | Environnement Node |
+| `MAX_FILE_SIZE` | `100mb` | Non encore utilisé programmatiquement (limite via multer en dur) |
+| `IMAGEMAGICK_CMD` | (aucune) | Sous Windows : chemin complet vers `magick.exe` si besoin (ex. `C:\Program Files\ImageMagick-7.x\magick.exe`) pour éviter conflit avec l’outil système `convert` |
+
+---
+
+## 7. Backlog — Fonctionnalités à développer
+
+> Ces éléments sont **planifiés** mais **non implémentés**. Chaque item doit faire l'objet d'une discussion avant développement.
+
+### 7.1 Priorité haute
+- [ ] **ZIP download** : télécharger tous les fichiers convertis en une seule archive `.zip` (librairie à choisir avec l'utilisateur)
+- [x] **Preview images (avant conversion)** : miniature des images dans la file d'attente (implémenté côté client via `URL.createObjectURL`)
+- [x] **Statut par image** : progression réelle et statut par fichier (En attente, Conversion en cours…, Converti/Erreur) ; conversion envoyée fichier par fichier
+- [ ] **Conversion par lot avec retry** : réessayer automatiquement les fichiers en erreur
+
+### 7.2 Priorité moyenne
+- [ ] **Drag & drop pour réordonner** la file d'attente
+- [ ] **Options avancées par format** : ex. effort AVIF
+- [x] **Redimensionnement (PNG)** : pour le PNG, le curseur contrôle déjà la résolution (réduction des dimensions en %) ; option width/height explicite possible en backlog
+- [ ] **Page de santé** : endpoint `GET /health` retournant `{ status: "ok", version: "1.0" }`
+- [ ] **Logs structurés** : remplacer `console.log` par un logger (à choisir avec l'utilisateur)
+
+### 7.3 Priorité basse
+- [ ] **Thème clair** : toggle light/dark mode
+- [ ] **Historique de session** : conserver les conversions de la session en cours (localStorage)
+- [ ] **Support SVG en entrée**
+- [x] **Métadonnées** : suppression par défaut (`-strip`) à chaque conversion ; option pour conserver les métadonnées non implémentée
+
+---
+
+## 8. Contraintes non fonctionnelles
+
+### 8.1 Sécurité
+- Validation stricte des extensions côté backend (liste blanche dans `fileFilter`)
+- Les noms de fichiers utilisateur ne sont **jamais** utilisés en sortie sur le filesystem (UUID uniquement)
+- Pas d'exposition du chemin filesystem dans les réponses API
+- Commandes shell construites avec les chemins entre guillemets pour éviter l'injection basique
+
+> ⚠️ **Ce qui N'EST PAS implémenté et nécessite accord avant ajout :** rate limiting, authentification, CSRF protection, helmet.js, sanitisation avancée des inputs.
+
+### 8.2 Performance
+- Conversion séquentielle (pas parallèle) dans la boucle `for...of`
+- Pas de queue de jobs, pas de worker threads en v1
+
+> ⚠️ **Toute parallélisation ou queue (Bull, BullMQ, etc.) nécessite accord avant implémentation.**
+
+### 8.3 Compatibilité navigateurs
+- Cible : Chrome/Firefox/Safari dernières versions
+- Pas de support IE ou anciens navigateurs requis
+
+### 8.4 Internationalisation
+- Langue de l'interface : **français uniquement** en v1
+- Pas de système i18n prévu
+
+---
+
+## 9. Ce qui est HORS SCOPE (v1)
+
+Ne pas implémenter ces éléments sans discussion :
+
+- Authentification / gestion d'utilisateurs
+- Base de données (aucune DB en v1)
+- Upload vers S3 ou stockage externe
+- API publique / clés API
+- Conversion vidéo
+- OCR ou traitement d'image avancé (recadrage, filtres, etc.)
+- Mode multi-instances / clustering
+- Tests automatisés (unitaires, e2e)
+- CI/CD pipeline
+- Monitoring / alerting
+
+---
+
+## 10. Questions ouvertes — À trancher avec l'utilisateur
+
+Ces décisions sont **intentionnellement laissées en suspens**. L'IA doit les poser avant tout développement qui les implique.
+
+| # | Question | Impact |
+|---|---|---|
+| Q1 | Quelle librairie utiliser pour le ZIP ? (`archiver`, `jszip`, autre ?) | Feature 7.1 |
+| Q2 | Faut-il un système de logs fichier ou uniquement console ? | 7.2 |
+| Q3 | La preview doit-elle être générée côté serveur ou via `FileReader` côté client ? | 7.1 |
+| Q4 | La barre de progression réelle doit-elle utiliser SSE ou polling ? | 7.1 |
+| Q5 | Faut-il limiter le débit des requêtes (rate limiting) ? Si oui, par IP ou global ? | 8.1 |
+| Q6 | Le redimensionnement doit-il conserver le ratio ? Avec quel comportement (crop, letterbox, stretch) ? | 7.2 |
+| Q7 | Faut-il ajouter un endpoint `GET /health` pour Docker healthcheck ? | 7.2 |
+| Q8 | Le nom du fichier téléchargé doit-il inclure un suffixe (ex: `photo_converted.jpg`) ? | UX |
+
+---
+
+## 11. Glossaire technique
+
+| Terme | Définition dans ce projet |
+|---|---|
+| `uploads/` | Dossier temporaire pour les fichiers reçus avant conversion |
+| `converted/` | Dossier des fichiers convertis, servis en statique |
+| `heif-convert` | Binaire CLI fourni par `libheif-examples` (apt), utilisé pour décoder HEIC |
+| `convert` / `magick` | Binaire CLI ImageMagick (6 ou 7) ; sous Windows on utilise `magick` pour éviter le conflit avec l’outil système `convert` |
+| `uuid` | Identifiant unique v4 utilisé pour nommer les fichiers sur le filesystem |
+| temp file | Fichier intermédiaire `<uuid>_temp.jpg` créé lors de la conversion HEIC vers un format non-JPEG |
+| batch | Ensemble de fichiers soumis en une seule requête POST `/api/convert` |
+
+---
+
+## Historique des modifications
+
+| Version | Date | Modifications |
+|---------|------|---------------|
+| 1.0 | 2026-02-24 | Version initiale (ImageShift → ABCLIV, spécification complète) |
+| 1.1 | 2026-02-24 | HEICF retiré des formats d'entrée. Bouton « Tout réinitialiser ». Miniature par image dans la file. Statut par image pendant la conversion. Bouton « Visualiser » (nouvel onglet) par résultat. Variable d'environnement `IMAGEMAGICK_CMD`. Backend Windows : usage de `magick` et chemins entre guillemets. |
+| 1.2 | 2026-02-24 | **PNG** : curseur = réduction de résolution (5–100 % des dimensions), sans perte de qualité. **Tous formats** : `-strip` (suppression des métadonnées). Curseur 0–100 ; qualité 0 % prise en compte pour JPEG/WebP/AVIF. |
+| 1.3 | 2026-02-24 | **Header** : logo image `public/logo.png` (hauteur 4rem) ; titre remplacé par « Image converter » (Arial, 2.25rem). Routes **POST /api/cleanup** et **POST /api/cleanup/all** pour vider uploads/converted. |
+
+*Toute modification de ce PRD doit être documentée avec la date et la version.*

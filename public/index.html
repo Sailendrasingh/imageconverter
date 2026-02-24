@@ -1,0 +1,739 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ABCLIV — Convertisseur d'images</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0c0c0f;
+      --surface: #141418;
+      --surface2: #1c1c22;
+      --border: #2a2a35;
+      --accent: #e8ff47;
+      --accent2: #ff6b35;
+      --text: #f0f0f5;
+      --text-muted: #7a7a8c;
+      --success: #4ade80;
+      --error: #f87171;
+      --radius: 12px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Syne', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      position: relative;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(var(--border) 1px, transparent 1px),
+        linear-gradient(90deg, var(--border) 1px, transparent 1px);
+      background-size: 40px 40px;
+      opacity: 0.3;
+      pointer-events: none;
+    }
+
+    .layout {
+      position: relative;
+      z-index: 1;
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 2rem 1rem 4rem;
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+
+    .logo-wrap {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .logo-img {
+      height: 4rem;
+      width: auto;
+      object-fit: contain;
+      display: block;
+    }
+
+    .logo {
+      font-family: Arial, sans-serif;
+      font-weight: 800;
+      font-size: 2.25rem;
+      letter-spacing: -0.02em;
+    }
+
+    .tagline {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      margin-left: 0.5rem;
+    }
+
+    .header-desc {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      max-width: 280px;
+    }
+
+    .badges {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-bottom: 2rem;
+    }
+
+    .badge {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.75rem;
+      padding: 0.35rem 0.6rem;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text-muted);
+    }
+
+    .badge.accent {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    .drop-zone {
+      border: 2px dashed var(--border);
+      background: var(--surface);
+      border-radius: var(--radius);
+      padding: 3rem 2rem;
+      text-align: center;
+      cursor: pointer;
+      transition: scale 0.2s, border-color 0.2s, background 0.2s;
+      margin-bottom: 1.5rem;
+    }
+
+    .drop-zone:hover,
+    .drop-zone.dragover {
+      border-color: var(--accent);
+      background: var(--surface2);
+      scale: 1.01;
+    }
+
+    .drop-zone .icon {
+      font-size: 2.5rem;
+      margin-bottom: 0.75rem;
+      opacity: 0.8;
+    }
+
+    .drop-zone h2 {
+      font-size: 1.1rem;
+      font-weight: 600;
+      margin-bottom: 0.25rem;
+    }
+
+    .drop-zone p {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+
+    input[type="file"] {
+      display: none;
+    }
+
+    .file-queue {
+      margin-bottom: 1.5rem;
+    }
+
+    .file-queue h3 {
+      font-size: 0.9rem;
+      font-weight: 600;
+      margin-bottom: 0.75rem;
+      color: var(--text-muted);
+    }
+
+    .file-list {
+      list-style: none;
+    }
+
+    .file-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      padding: 0.6rem 0.75rem;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      margin-bottom: 0.5rem;
+      font-size: 0.9rem;
+      animation: slideIn 0.2s ease;
+    }
+
+    .file-item .file-thumb {
+      flex-shrink: 0;
+      width: 48px;
+      height: 48px;
+      border-radius: 6px;
+      overflow: hidden;
+      background: var(--border);
+    }
+
+    .file-item .file-thumb img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .file-item .file-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .file-item .name {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.85rem;
+    }
+
+    .file-item .meta {
+      color: var(--text-muted);
+      font-size: 0.8rem;
+      margin-left: 0.5rem;
+    }
+
+    .file-item button {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      padding: 0.25rem;
+      font-size: 1.1rem;
+      line-height: 1;
+    }
+
+    .file-item button:hover {
+      color: var(--error);
+    }
+
+    .settings-bar {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 1rem;
+      padding: 1rem;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      margin-bottom: 1.5rem;
+    }
+
+    .settings-bar label {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+
+    .settings-bar select {
+      font-family: 'DM Mono', monospace;
+      padding: 0.5rem 0.75rem;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-size: 0.9rem;
+    }
+
+    .quality-wrap {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .quality-wrap input[type="range"] {
+      width: 120px;
+      accent-color: var(--accent);
+    }
+
+    .quality-wrap span {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      min-width: 2rem;
+    }
+
+    .btn {
+      font-family: 'Syne', sans-serif;
+      font-weight: 600;
+      padding: 0.6rem 1.25rem;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      font-size: 0.9rem;
+      transition: opacity 0.2s;
+    }
+
+    .btn:hover { opacity: 0.9; }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .btn-primary {
+      background: var(--accent);
+      color: var(--bg);
+    }
+
+    .btn-secondary {
+      background: transparent;
+      color: var(--text-muted);
+      border: 1px solid var(--border);
+    }
+
+    .btn-secondary:hover {
+      color: var(--text);
+      border-color: var(--text-muted);
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .progress-section {
+      margin-bottom: 1.5rem;
+    }
+
+    .progress-section .label {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      margin-bottom: 0.5rem;
+    }
+
+    .progress-bar-wrap {
+      height: 8px;
+      background: var(--surface2);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    .progress-bar {
+      height: 100%;
+      background: var(--accent);
+      width: 0%;
+      transition: width 0.3s ease;
+    }
+
+    .results-section h3 {
+      font-size: 0.9rem;
+      font-weight: 600;
+      margin-bottom: 0.75rem;
+      color: var(--text-muted);
+    }
+
+    .result-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.6rem 0.75rem;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      margin-bottom: 0.5rem;
+      animation: slideIn 0.2s ease;
+    }
+
+    .result-item.success { border-color: var(--success); }
+    .result-item.error { border-color: var(--error); }
+
+    .result-item .name {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.85rem;
+    }
+
+    .result-item .msg {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      margin-left: 0.5rem;
+    }
+
+    .result-item.error .msg { color: var(--error); }
+
+    .result-item.pending .status-msg { color: var(--text-muted); }
+    .result-item.converting .status-msg { color: var(--accent); }
+
+    .result-item .result-actions {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .result-item .download-btn,
+    .result-item .view-btn {
+      font-family: 'Syne', sans-serif;
+      font-weight: 600;
+      padding: 0.4rem 0.8rem;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.8rem;
+      text-decoration: none;
+    }
+
+    .result-item .download-btn {
+      background: var(--accent);
+      color: var(--bg);
+      border: none;
+    }
+
+    .result-item .download-btn:hover { opacity: 0.9; }
+
+    .result-item .view-btn {
+      background: transparent;
+      color: var(--text-muted);
+      border: 1px solid var(--border);
+    }
+
+    .result-item .view-btn:hover {
+      color: var(--text);
+      border-color: var(--text-muted);
+    }
+
+    .download-all-wrap {
+      margin-top: 1rem;
+    }
+
+    footer {
+      margin-top: 3rem;
+      padding-top: 1.5rem;
+      border-top: 1px solid var(--border);
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      text-align: center;
+    }
+
+    footer a { color: var(--accent); }
+
+    @keyframes slideIn {
+      from { transform: translateY(-8px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <header>
+      <div class="logo-wrap">
+        <img src="logo.png" alt="Image converter" class="logo-img">
+        <span class="logo">Image converter</span>
+      </div>
+      <div class="header-actions">
+        <p class="header-desc">Convertissez vos images (dont HEIC) en JPEG, PNG, WebP ou AVIF. Tout reste sur votre machine.</p>
+        <button type="button" class="btn btn-secondary" id="resetBtn">Tout réinitialiser</button>
+      </div>
+    </header>
+
+    <div class="badges">
+      <span class="badge">JPG</span>
+      <span class="badge">PNG</span>
+      <span class="badge">WebP</span>
+      <span class="badge">AVIF</span>
+      <span class="badge">TIFF</span>
+      <span class="badge">BMP</span>
+      <span class="badge">GIF</span>
+      <span class="badge accent">HEIC</span>
+    </div>
+
+    <div class="drop-zone" id="dropZone" tabindex="0">
+      <div class="icon">📁</div>
+      <h2>Déposez vos images ici</h2>
+      <p>ou cliquez pour parcourir · max 20 fichiers, 100 Mo par fichier</p>
+      <input type="file" id="fileInput" accept=".jpg,.jpeg,.png,.webp,.avif,.heic,.tiff,.bmp,.gif" multiple>
+    </div>
+
+    <div class="file-queue hidden" id="fileQueue">
+      <h3>Fichiers sélectionnés</h3>
+      <ul class="file-list" id="fileList"></ul>
+    </div>
+
+    <div class="settings-bar hidden" id="settingsBar">
+      <label>Format de sortie</label>
+      <select id="formatSelect">
+        <option value="jpeg">JPEG</option>
+        <option value="png">PNG</option>
+        <option value="webp" selected>WebP</option>
+        <option value="avif">AVIF</option>
+      </select>
+      <div class="quality-wrap">
+        <label>Qualité</label>
+        <input type="range" id="qualityRange" min="10" max="100" value="85">
+        <span id="qualityValue">85</span>
+      </div>
+      <button type="button" class="btn btn-primary" id="convertBtn">Convertir</button>
+    </div>
+
+    <div class="progress-section hidden" id="progressSection">
+      <div class="label" id="progressLabel">Conversion en cours…</div>
+      <div class="progress-bar-wrap">
+        <div class="progress-bar" id="progressBar"></div>
+      </div>
+    </div>
+
+    <div class="results-section hidden" id="resultsSection">
+      <h3>Résultats</h3>
+      <div id="resultsList"></div>
+      <div class="download-all-wrap hidden" id="downloadAllWrap">
+        <button type="button" class="btn btn-primary" id="downloadAllBtn">Tout télécharger</button>
+      </div>
+    </div>
+
+    <footer>
+      Usage local uniquement · Aucune donnée n’est envoyée à l’extérieur · Express, Multer, ImageMagick, libheif
+    </footer>
+  </div>
+
+  <script>
+    const MAX_FILES = 20;
+    const MAX_SIZE = 100 * 1024 * 1024; // 100 MB
+    const DOWNLOAD_DELAY_MS = 300;
+
+    const dropZone = document.getElementById('dropZone');
+    const fileInput = document.getElementById('fileInput');
+    const fileQueue = document.getElementById('fileQueue');
+    const fileList = document.getElementById('fileList');
+    const settingsBar = document.getElementById('settingsBar');
+    const formatSelect = document.getElementById('formatSelect');
+    const qualityRange = document.getElementById('qualityRange');
+    const qualityValue = document.getElementById('qualityValue');
+    const convertBtn = document.getElementById('convertBtn');
+    const progressSection = document.getElementById('progressSection');
+    const progressBar = document.getElementById('progressBar');
+    const progressLabel = document.getElementById('progressLabel');
+    const resultsSection = document.getElementById('resultsSection');
+    const resultsList = document.getElementById('resultsList');
+    const downloadAllWrap = document.getElementById('downloadAllWrap');
+    const downloadAllBtn = document.getElementById('downloadAllBtn');
+    const resetBtn = document.getElementById('resetBtn');
+
+    let selectedFiles = [];
+    let filePreviewUrls = [];
+
+    function resetAll() {
+      filePreviewUrls.forEach(url => URL.revokeObjectURL(url));
+      filePreviewUrls = [];
+      selectedFiles = [];
+      fileInput.value = '';
+      renderFileList();
+      fileQueue.classList.add('hidden');
+      settingsBar.classList.add('hidden');
+      progressSection.classList.add('hidden');
+      resultsSection.classList.add('hidden');
+      resultsList.innerHTML = '';
+      downloadAllWrap.classList.add('hidden');
+      formatSelect.value = 'webp';
+      qualityRange.value = 85;
+      qualityValue.textContent = '85';
+    }
+
+    function dedup(files) {
+      const seen = new Set();
+      return Array.from(files).filter(f => {
+        const key = f.name + '-' + f.size;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+    }
+
+    function addFiles(newFiles) {
+      const arr = dedup(newFiles);
+      const valid = arr.filter(f => {
+        if (f.size > MAX_SIZE) return false;
+        return true;
+      });
+      selectedFiles = selectedFiles.concat(valid).slice(0, MAX_FILES);
+      renderFileList();
+      fileQueue.classList.remove('hidden');
+      settingsBar.classList.remove('hidden');
+      resultsSection.classList.add('hidden');
+    }
+
+    function removeFile(index) {
+      selectedFiles.splice(index, 1);
+      renderFileList();
+      if (selectedFiles.length === 0) {
+        fileQueue.classList.add('hidden');
+        settingsBar.classList.add('hidden');
+      }
+    }
+
+    function renderFileList() {
+      filePreviewUrls.forEach(url => URL.revokeObjectURL(url));
+      filePreviewUrls = [];
+      fileList.innerHTML = '';
+      selectedFiles.forEach((file, i) => {
+        const li = document.createElement('li');
+        li.className = 'file-item';
+        const ext = file.name.split('.').pop().toLowerCase();
+        const thumbUrl = file.type.startsWith('image/') ? URL.createObjectURL(file) : '';
+        if (thumbUrl) filePreviewUrls.push(thumbUrl);
+        const thumbHtml = thumbUrl
+          ? `<div class="file-thumb"><img src="${thumbUrl}" alt="" onerror="this.parentElement.innerHTML=''"></div>`
+          : '<div class="file-thumb"></div>';
+        li.innerHTML = `
+          ${thumbHtml}
+          <span class="file-info"><span class="name">${ext.toUpperCase()}</span> ${file.name} <span class="meta">${formatSize(file.size)}</span></span>
+          <button type="button" aria-label="Supprimer" data-index="${i}">✕</button>
+        `;
+        li.querySelector('button').onclick = () => removeFile(i);
+        fileList.appendChild(li);
+      });
+    }
+
+    function formatSize(bytes) {
+      if (bytes < 1024) return bytes + ' o';
+      if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' Ko';
+      return (bytes / (1024 * 1024)).toFixed(1) + ' Mo';
+    }
+
+    dropZone.addEventListener('click', () => fileInput.click());
+    dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
+    dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+    dropZone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      dropZone.classList.remove('dragover');
+      if (e.dataTransfer.files.length) addFiles(e.dataTransfer.files);
+    });
+    fileInput.addEventListener('change', (e) => {
+      if (e.target.files.length) addFiles(e.target.files);
+      e.target.value = '';
+    });
+
+    qualityRange.addEventListener('input', () => { qualityValue.textContent = qualityRange.value; });
+
+    resetBtn.addEventListener('click', resetAll);
+
+    function runFakeProgress(durationMs) {
+      progressSection.classList.remove('hidden');
+      progressBar.style.width = '0%';
+      let start = Date.now();
+      const tick = () => {
+        const elapsed = Date.now() - start;
+        const p = Math.min(98, (elapsed / durationMs) * 100);
+        progressBar.style.width = p + '%';
+        if (elapsed < durationMs) requestAnimationFrame(tick);
+      };
+      requestAnimationFrame(tick);
+    }
+
+    function setProgressComplete() {
+      progressBar.style.width = '100%';
+      progressLabel.textContent = 'Terminé';
+    }
+
+    function setProgress(current, total) {
+      const p = total ? Math.round((current / total) * 100) : 0;
+      progressBar.style.width = p + '%';
+      progressLabel.textContent = `Conversion ${current}/${total}…`;
+    }
+
+    convertBtn.addEventListener('click', async () => {
+      if (selectedFiles.length === 0) return;
+      convertBtn.disabled = true;
+      progressSection.classList.remove('hidden');
+      progressBar.style.width = '0%';
+      resultsSection.classList.remove('hidden');
+      resultsList.innerHTML = '';
+      downloadAllWrap.classList.add('hidden');
+
+      const total = selectedFiles.length;
+      const successes = [];
+      const rows = [];
+
+      selectedFiles.forEach((file, i) => {
+        const row = document.createElement('div');
+        row.className = 'result-item pending';
+        row.dataset.index = i;
+        row.innerHTML = `
+          <span><span class="name">${file.name}</span> <span class="status-msg msg">En attente</span></span>
+        `;
+        resultsList.appendChild(row);
+        rows.push(row);
+      });
+
+      for (let i = 0; i < selectedFiles.length; i++) {
+        const file = selectedFiles[i];
+        const row = rows[i];
+        row.className = 'result-item converting';
+        row.querySelector('.status-msg').textContent = 'Conversion en cours…';
+        setProgress(i, total);
+
+        const formData = new FormData();
+        formData.append('images', file);
+        formData.append('format', formatSelect.value);
+        formData.append('quality', qualityRange.value);
+
+        try {
+          const res = await fetch('/api/convert', { method: 'POST', body: formData });
+          const data = await res.json();
+          const r = (data.results && data.results[0]) || null;
+          const err = (data.errors && data.errors[0]) || null;
+
+          if (r) {
+            row.className = 'result-item success';
+            row.innerHTML = `
+              <span><span class="name">${r.downloadName}</span> <span class="msg">${formatSize(r.size)} · ${r.format}</span></span>
+              <span class="result-actions">
+                <a href="${r.url}" target="_blank" rel="noopener" class="view-btn">Visualiser</a>
+                <a href="${r.url}" download="${r.downloadName}" class="download-btn">Télécharger</a>
+              </span>
+            `;
+            successes.push({ url: r.url, name: r.downloadName });
+          } else {
+            row.className = 'result-item error';
+            row.innerHTML = `
+              <span><span class="name">${file.name}</span> <span class="msg">${err ? err.error : 'Erreur inconnue'}</span></span>
+            `;
+          }
+        } catch (err) {
+          row.className = 'result-item error';
+          row.innerHTML = `
+            <span><span class="name">${file.name}</span> <span class="msg">Erreur réseau: ${err.message}</span></span>
+          `;
+        }
+
+        setProgress(i + 1, total);
+      }
+
+      setProgressComplete();
+      if (successes.length >= 2) {
+        downloadAllWrap.classList.remove('hidden');
+        downloadAllBtn.onclick = () => {
+          successes.forEach((u, i) => {
+            setTimeout(() => {
+              const a = document.createElement('a');
+              a.href = u.url;
+              a.download = u.name;
+              a.click();
+            }, i * DOWNLOAD_DELAY_MS);
+          });
+        };
+      }
+      convertBtn.disabled = false;
+    });
+  </script>
+</body>
+</html>

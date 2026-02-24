@@ -1,0 +1,17 @@
+version: "3.8"
+
+services:
+  app:
+    build: .
+    ports:
+      - "${PORT:-3000}:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+    volumes:
+      - uploads_data:/app/uploads
+      - converted_data:/app/converted
+
+volumes:
+  uploads_data:
+  converted_data:
