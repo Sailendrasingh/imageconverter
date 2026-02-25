@@ -9,11 +9,26 @@ Convertisseur d'images web. Conversion de formats courants et HEIC vers JPEG, PN
 
 ## Lancement avec Docker
 
+Le `docker-compose.yml` actuel :
+- publie l'application sur **`3005:3000`**
+- attache le conteneur au réseau Docker externe **`proxy`** (ex. pour Nginx Proxy Manager)
+
+Si le réseau `proxy` n'existe pas encore :
+
+```bash
+docker network create proxy
+```
+
 ```bash
 docker compose up --build
 ```
 
-L'application est accessible sur **http://localhost:3000**.
+L'application est accessible sur **http://localhost:3005**.
+
+Si vous utilisez **Nginx Proxy Manager** (ou un autre reverse proxy) sur le même réseau Docker `proxy`, configurez l’upstream vers :
+- **Host** : `app` (ou le nom du conteneur)
+- **Port** : `3000`
+- **Scheme** : `http`
 
 ## Développement local (sans Docker)
 
@@ -72,6 +87,11 @@ puis relancer `npm start`.
 - Bouton **Tout réinitialiser** : réinitialise l’interface et vide `uploads/` + `converted/` via l’API
 - Nettoyage automatique des fichiers temporaires (toutes les 15 min, fichiers de plus d’1 h)
 - Endpoints de nettoyage : `POST /api/cleanup` et `POST /api/cleanup/all`
+
+## Docker (notes)
+
+- Le `Dockerfile` installe `imagemagick` et `libheif` via **Debian Bookworm + backports** (`libheif1`, `libheif-examples`) pour améliorer la compatibilité HEIC.
+- Le port interne de l'app reste **3000** dans le conteneur ; le port publié sur l’hôte (dans le `docker-compose.yml` actuel) est **3005**.
 
 ## Structure
 

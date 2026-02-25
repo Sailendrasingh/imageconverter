@@ -1,5 +1,5 @@
 # PRD — ABCLIV · Convertisseur d'images web
-**Version** : 1.4  
+**Version** : 1.5  
 **Date** : 2026-02-25  
 **Statut** : En cours de développement  
 **Owner** : À définir
@@ -52,7 +52,7 @@ Usage personnel / interne. Pas d'authentification. Pas de multi-tenant. Pas de S
 | Framework | Express 4.x |
 | Upload | `multer` 1.4.5-lts.1 |
 | UUID | `uuid` 9.x |
-| Conversion HEIC | Binaire système `heif-convert` (package `libheif-examples`) |
+| Conversion HEIC | Binaire système `heif-convert` (package `libheif-examples`) ; image Docker avec `libheif1`/`libheif-examples` via **Debian bookworm-backports** pour meilleure compatibilité HEIC |
 | Conversion autres formats | Binaire système `convert` (ImageMagick 6.x) ; sous Windows `magick` (ImageMagick 7), configurable via `IMAGEMAGICK_CMD` |
 | Appels système | `child_process.exec` (pas `spawn`, pas `execFile`) |
 | Port | `3000` (configurable via `process.env.PORT`) |
@@ -73,7 +73,9 @@ Usage personnel / interne. Pas d'authentification. Pas de multi-tenant. Pas de S
 | Fichier Compose | `docker-compose.yml` à la racine |
 | Dockerfile | `Dockerfile` à la racine |
 | Volumes | `uploads_data` et `converted_data` (Docker named volumes) |
-| Pas de reverse proxy | Pas de Nginx, pas de Caddy sauf demande explicite |
+| Port publié (compose actuel) | `3005:3000` (hôte → conteneur) |
+| Réseau Docker (compose actuel) | Réseau externe `proxy` (intégration reverse proxy type NPM) |
+| Reverse proxy | Hors stack applicative ; intégration possible via le réseau `proxy` |
 
 ### 2.4 Structure des fichiers — FIGÉE
 ```
@@ -132,6 +134,7 @@ Autres → ImageMagick directement → output
 - Les fichiers uploadés sont supprimés immédiatement après conversion
 - Les fichiers convertis sont stockés dans `converted/` avec un nom UUID
 - **Noms de fichiers accents/UTF-8** : décodage défensif côté backend des noms `multipart` pour éviter le mojibake (`Ã©`) dans `originalName` / `downloadName`
+- **Image Docker** : `libheif` chargé depuis `bookworm-backports` pour corriger certains échecs HEIC liés aux métadonnées (ex. erreurs `Metadata not correctly assigned to image`)
 
 ### 3.6 Nettoyage automatique
 - Interval : toutes les **15 minutes**
@@ -148,7 +151,7 @@ Autres → ImageMagick directement → output
 ### 3.8 Interface — composants existants
 | Composant | Description |
 |---|---|
-| Header | Image **logo.png** (public/), hauteur 4rem ; texte **« Image converter »** en Arial 2.25rem ; description à droite ; bouton **Tout réinitialiser** (reset UI + appel `POST /api/cleanup/all` pour vider `uploads/` et `converted/`) |
+| Header | Image **logo.png** (public/), hauteur 4rem ; texte **« Image converter »** en Arial 2.25rem, couleur **`#EE743C`** ; description à droite ; bouton **Tout réinitialiser** (reset UI + appel `POST /api/cleanup/all` pour vider `uploads/` et `converted/`) |
 | Badges formats | Ligne de badges des formats supportés (HEIC en jaune accent) |
 | Drop zone | Zone centrale avec icône, titre, sous-titre |
 | File queue | Liste des fichiers sélectionnés : **miniature** (thumbnail) par image, extension, nom, taille, bouton suppression. Formats classiques via `URL.createObjectURL`; HEIC via preview client `heic2any` (fallback vide si échec) |
@@ -259,7 +262,7 @@ Vide immédiatement les dossiers `uploads/` et `converted/`.
 
 | Variable | Valeur par défaut | Description |
 |---|---|---|
-| `PORT` | `3000` | Port d'écoute Express |
+| `PORT` | `3000` | Port d'écoute Express (interne conteneur) |
 | `NODE_ENV` | `production` | Environnement Node |
 | `MAX_FILE_SIZE` | `100mb` | Non encore utilisé programmatiquement (limite via multer en dur) |
 | `IMAGEMAGICK_CMD` | (aucune) | Sous Windows : chemin complet vers `magick.exe` si besoin (ex. `C:\Program Files\ImageMagick-7.x\magick.exe`) pour éviter conflit avec l’outil système `convert` |
@@ -375,5 +378,6 @@ Ces décisions sont **intentionnellement laissées en suspens**. L'IA doit les p
 | 1.2 | 2026-02-24 | **PNG** : curseur = réduction de résolution (5–100 % des dimensions), sans perte de qualité. **Tous formats** : `-strip` (suppression des métadonnées). Curseur 0–100 ; qualité 0 % prise en compte pour JPEG/WebP/AVIF. |
 | 1.3 | 2026-02-24 | **Header** : logo image `public/logo.png` (hauteur 4rem) ; titre remplacé par « Image converter » (Arial, 2.25rem). Routes **POST /api/cleanup** et **POST /api/cleanup/all** pour vider uploads/converted. |
 | 1.4 | 2026-02-25 | **Preview HEIC** côté client via `heic2any` local (`public/heic2any.min.js`, chargement à la demande). **Tout réinitialiser** déclenche aussi `POST /api/cleanup/all`. **Téléchargement** : correction des noms de fichiers accentués (UTF-8) dans `originalName` / `downloadName`. Section API mise à jour avec routes cleanup documentées. |
+| 1.5 | 2026-02-25 | **Docker** : `libheif` installé via **Debian bookworm-backports** (`libheif1` + `libheif-examples`) pour améliorer la compatibilité HEIC. **Compose** : port publié `3005:3000` et rattachement au réseau Docker externe `proxy` (intégration NPM/reverse proxy). **UI** : couleur du titre « Image converter » = `#EE743C`. |
 
 *Toute modification de ce PRD doit être documentée avec la date et la version.*
