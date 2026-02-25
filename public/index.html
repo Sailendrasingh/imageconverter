@@ -530,8 +530,10 @@
 
     let selectedFiles = [];
     let filePreviewUrls = [];
+    let renderFileListToken = 0;
+    let heic2anyLoadPromise = null;
 
-    function resetAll() {
+    async function resetAll() {
       filePreviewUrls.forEach(url => URL.revokeObjectURL(url));
       filePreviewUrls = [];
       selectedFiles = [];
@@ -546,6 +548,15 @@
       formatSelect.value = 'webp';
       qualityRange.value = 85;
       qualityValue.textContent = '85';
+
+      try {
+        const res = await fetch('/api/cleanup/all', { method: 'POST' });
+        if (!res.ok) {
+          console.warn('Nettoyage serveur échoué:', res.status);
+        }
+      } catch (err) {
+        console.warn('Nettoyage serveur impossible:', err);
+      }
     }
 
     function dedup(files) {
@@ -580,27 +591,117 @@
       }
     }
 
-    function renderFileList() {
+    function getFileExt(file) {
+      return (file.name.split('.').pop() || '').toLowerCase();
+    }
+
+    function isHeicLike(file) {
+      const ext = getFileExt(file);
+      const type = (file.type || '').toLowerCase();
+      return ext === 'heic' || ext === 'heif' || ext === 'heicf' || type.includes('heic') || type.includes('heif');
+    }
+
+    function loadHeic2any() {
+      if (typeof window.heic2any === 'function') return Promise.resolve(window.heic2any);
+      if (heic2anyLoadPromise) return heic2anyLoadPromise;
+
+      heic2anyLoadPromise = new Promise((resolve, reject) => {
+        const existing = document.querySelector('script[data-heic2any="1"]');
+        if (existing) {
+          existing.addEventListener('load', () => resolve(window.heic2any), { once: true });
+          existing.addEventListener('error', () => reject(new Error('Chargement heic2any échoué')), { once: true });
+          return;
+        }
+
+        const script = document.createElement('script');
+        script.src = 'heic2any.min.js';
+        script.async = true;
+        script.dataset.heic2any = '1';
+        script.onload = () => {
+          if (typeof window.heic2any === 'function') {
+            resolve(window.heic2any);
+            return;
+          }
+          reject(new Error('heic2any chargé mais indisponible'));
+        };
+        script.onerror = () => reject(new Error('Chargement heic2any échoué'));
+        document.head.appendChild(script);
+      }).catch((err) => {
+        heic2anyLoadPromise = null;
+        throw err;
+      });
+
+      return heic2anyLoadPromise;
+    }
+
+    async function createPreviewUrl(file) {
+      if (isHeicLike(file)) {
+        try {
+          await loadHeic2any();
+          if (typeof window.heic2any !== 'function') return '';
+          const converted = await window.heic2any({
+            blob: file,
+            toType: 'image/jpeg',
+            quality: 0.8
+          });
+          const previewBlob = Array.isArray(converted) ? converted[0] : converted;
+          if (previewBlob instanceof Blob) {
+            return URL.createObjectURL(previewBlob);
+          }
+          return '';
+        } catch (err) {
+          console.warn('Preview HEIC impossible:', file.name, err);
+          return '';
+        }
+      }
+
+      try {
+        return URL.createObjectURL(file);
+      } catch (err) {
+        console.warn('Preview impossible:', file.name, err);
+        return '';
+      }
+    }
+
+    async function renderFileList() {
+      const currentRenderToken = ++renderFileListToken;
       filePreviewUrls.forEach(url => URL.revokeObjectURL(url));
       filePreviewUrls = [];
       fileList.innerHTML = '';
+      const rows = [];
+
       selectedFiles.forEach((file, i) => {
         const li = document.createElement('li');
         li.className = 'file-item';
-        const ext = file.name.split('.').pop().toLowerCase();
-        const thumbUrl = file.type.startsWith('image/') ? URL.createObjectURL(file) : '';
-        if (thumbUrl) filePreviewUrls.push(thumbUrl);
-        const thumbHtml = thumbUrl
-          ? `<div class="file-thumb"><img src="${thumbUrl}" alt="" onerror="this.parentElement.innerHTML=''"></div>`
-          : '<div class="file-thumb"></div>';
+        const ext = getFileExt(file);
         li.innerHTML = `
-          ${thumbHtml}
+          <div class="file-thumb"></div>
           <span class="file-info"><span class="name">${ext.toUpperCase()}</span> ${file.name} <span class="meta">${formatSize(file.size)}</span></span>
           <button type="button" aria-label="Supprimer" data-index="${i}">✕</button>
         `;
         li.querySelector('button').onclick = () => removeFile(i);
         fileList.appendChild(li);
+        rows.push({ file, thumbEl: li.querySelector('.file-thumb') });
       });
+
+      for (const row of rows) {
+        const thumbUrl = await createPreviewUrl(row.file);
+        if (currentRenderToken !== renderFileListToken) {
+          if (thumbUrl) URL.revokeObjectURL(thumbUrl);
+          return;
+        }
+        if (!thumbUrl || !row.thumbEl) continue;
+
+        filePreviewUrls.push(thumbUrl);
+        const img = document.createElement('img');
+        img.src = thumbUrl;
+        img.alt = '';
+        img.onerror = () => {
+          row.thumbEl.innerHTML = '';
+        };
+        row.thumbEl.innerHTML = '';
+        row.thumbEl.appendChild(img);
+      }
     }
 
     function formatSize(bytes) {

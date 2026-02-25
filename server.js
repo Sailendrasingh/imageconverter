@@ -63,6 +63,19 @@ function isHeic(pathName) {
   return ext === '.heic';
 }
 
+function decodeOriginalName(name) {
+  if (typeof name !== 'string') return '';
+  // Multer/Busboy may expose UTF-8 filenames decoded as latin1 ("Ã©" instead of "é").
+  if (!/[ÃÂâð]/.test(name)) return name;
+  try {
+    const decoded = Buffer.from(name, 'latin1').toString('utf8');
+    if (!decoded || decoded.includes('\uFFFD')) return name;
+    return decoded;
+  } catch (_) {
+    return name;
+  }
+}
+
 function getOutputExt(format) {
   return format === 'jpeg' ? '.jpg' : `.${format}`;
 }
@@ -103,14 +116,15 @@ app.post('/api/convert', upload.array('images', MAX_FILES), async (req, res) => 
 
   for (const file of files) {
     const inputPath = file.path;
-    const baseName = path.basename(file.originalname, path.extname(file.originalname));
+    const originalName = decodeOriginalName(file.originalname);
+    const baseName = path.basename(originalName, path.extname(originalName));
     const outExt = getOutputExt(format);
     const outputId = uuidv4();
     const outputPath = path.join(CONVERTED_DIR, `${outputId}${outExt}`);
     const downloadName = `${baseName}${outExt}`;
 
     try {
-      if (isHeic(file.originalname)) {
+      if (isHeic(originalName)) {
         const tempJpg = path.join(UPLOADS_DIR, `${outputId}_temp.jpg`);
         try {
           await execAsync(`heif-convert "${cmdPath(inputPath)}" "${cmdPath(tempJpg)}"`);
@@ -122,7 +136,7 @@ app.post('/api/convert', upload.array('images', MAX_FILES), async (req, res) => 
           }
           const stat = fs.statSync(outputPath);
           results.push({
-            originalName: file.originalname,
+            originalName,
             downloadName,
             url: `/converted/${outputId}${outExt}`,
             size: stat.size,
@@ -147,14 +161,14 @@ app.post('/api/convert', upload.array('images', MAX_FILES), async (req, res) => 
 
       const stat = fs.statSync(outputPath);
       results.push({
-        originalName: file.originalname,
+        originalName,
         downloadName,
         url: `/converted/${outputId}${outExt}`,
         size: stat.size,
         format
       });
     } catch (err) {
-      errors.push({ file: file.originalname, error: err.message });
+      errors.push({ file: originalName, error: err.message });
     } finally {
       try {
         if (fs.existsSync(inputPath)) fs.unlinkSync(inputPath);
