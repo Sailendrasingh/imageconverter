@@ -1,17 +1,21 @@
-version: "3.8"
-
 services:
   app:
     build: .
     ports:
-      - "${PORT:-3000}:3000"
+      - 3005:3000
     environment:
       - NODE_ENV=production
       - PORT=3000
     volumes:
       - uploads_data:/app/uploads
       - converted_data:/app/converted
+    networks:
+      - proxy
 
 volumes:
   uploads_data:
   converted_data:
+
+networks:
+  proxy:
+    external: true
