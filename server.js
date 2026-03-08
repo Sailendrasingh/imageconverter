@@ -4,6 +4,7 @@ const { v4: uuidv4 } = require('uuid');
 const path = require('path');
 const fs = require('fs');
 const { exec } = require('child_process');
+const packageJson = require('./package.json');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -22,6 +23,31 @@ const IMG_CMD_QUOTED = (process.platform === 'win32' && IMG_CMD.includes(' ')) ?
 const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100 MB
 const CLEANUP_INTERVAL_MS = 15 * 60 * 1000;   // 15 min
 const FILE_MAX_AGE_MS = 60 * 60 * 1000;       // 1 hour
+const APP_VERSION = packageJson.version;
+const HEALTH_VERSION = APP_VERSION.split('.').slice(0, 2).join('.');
+
+function log(level, message, extra = {}) {
+  const entry = {
+    ts: new Date().toISOString(),
+    level,
+    message,
+    ...extra
+  };
+  const line = JSON.stringify(entry);
+  if (level === 'error') {
+    console.error(line);
+    return;
+  }
+  console.log(line);
+}
+
+function serializeError(err) {
+  if (!err) return null;
+  return {
+    message: err.message,
+    stack: err.stack
+  };
+}
 
 [UPLOADS_DIR, CONVERTED_DIR].forEach(dir => {
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
@@ -35,6 +61,11 @@ const storage = multer.diskStorage({
 const fileFilter = (req, file, cb) => {
   const ext = path.extname(file.originalname).toLowerCase();
   if (ALLOWED_EXT.includes(ext)) return cb(null, true);
+  if (!Array.isArray(req.fileValidationErrors)) req.fileValidationErrors = [];
+  req.fileValidationErrors.push({
+    file: decodeOriginalName(file.originalname),
+    error: `Format de fichier invalide: ${ext || 'sans extension'}`
+  });
   cb(null, false);
 };
 
@@ -80,27 +111,48 @@ function getOutputExt(format) {
   return format === 'jpeg' ? '.jpg' : `.${format}`;
 }
 
+function normalizeQuality(value) {
+  const qRaw = Number(value);
+  return Number.isNaN(qRaw) ? 85 : Math.min(100, Math.max(0, qRaw));
+}
+
+function normalizePngScale(value) {
+  const qRaw = Number(value);
+  return Number.isNaN(qRaw) ? 100 : Math.min(100, Math.max(5, qRaw));
+}
+
 async function convertFile(inputPath, outputPath, format, quality) {
   const inP = cmdPath(inputPath);
   const outP = cmdPath(outputPath);
   if (format === 'png') {
-    const qRaw = Number(quality);
-    const scale = Number.isNaN(qRaw) ? 100 : Math.min(100, Math.max(5, qRaw));
+    const scale = normalizePngScale(quality);
     return execAsync(`${IMG_CMD_QUOTED} "${inP}" -strip -resize ${scale}% -define png:compression-level=9 "${outP}"`);
   }
   if (format === 'jpeg' || format === 'webp' || format === 'avif') {
-    const qRaw = Number(quality);
-    const q = !Number.isNaN(qRaw) ? Math.min(100, Math.max(0, qRaw)) : 85;
+    const q = normalizeQuality(quality);
     return execAsync(`${IMG_CMD_QUOTED} "${inP}" -strip -quality ${q} "${outP}"`);
   }
   throw new Error(`Format non supporté: ${format}`);
 }
 
 app.use(express.json());
+app.use((req, res, next) => {
+  const start = Date.now();
+  res.on('finish', () => {
+    log('info', 'request_completed', {
+      method: req.method,
+      path: req.originalUrl,
+      status: res.statusCode,
+      duration_ms: Date.now() - start
+    });
+  });
+  next();
+});
 
 app.post('/api/convert', upload.array('images', MAX_FILES), async (req, res) => {
   const format = (req.body.format || 'jpeg').toLowerCase();
   const quality = req.body.quality !== undefined ? Number(req.body.quality) : 85;
+  const rejectedFiles = Array.isArray(req.fileValidationErrors) ? req.fileValidationErrors : [];
 
   if (!OUTPUT_FORMATS.includes(format)) {
     return res.status(400).json({ error: `Format de sortie invalide: ${format}` });
@@ -108,11 +160,14 @@ app.post('/api/convert', upload.array('images', MAX_FILES), async (req, res) => 
 
   const files = req.files || [];
   if (files.length === 0) {
+    if (rejectedFiles.length > 0) {
+      return res.status(400).json({ results: [], errors: rejectedFiles });
+    }
     return res.status(400).json({ error: 'Aucun fichier uploadé' });
   }
 
   const results = [];
-  const errors = [];
+  const errors = rejectedFiles.slice();
 
   for (const file of files) {
     const inputPath = file.path;
@@ -148,7 +203,7 @@ app.post('/api/convert', upload.array('images', MAX_FILES), async (req, res) => 
         }
         try {
           if (format === 'jpeg') {
-            await execAsync(`${IMG_CMD_QUOTED} "${cmdPath(tempJpg)}" -strip -quality ${quality} "${cmdPath(outputPath)}"`);
+            await execAsync(`${IMG_CMD_QUOTED} "${cmdPath(tempJpg)}" -strip -quality ${normalizeQuality(quality)} "${cmdPath(outputPath)}"`);
           } else {
             await convertFile(tempJpg, outputPath, format, quality);
           }
@@ -190,6 +245,10 @@ app.get('/converted/:filename', (req, res) => {
   res.sendFile(filePath);
 });
 
+app.get('/health', (req, res) => {
+  res.json({ status: 'ok', version: HEALTH_VERSION });
+});
+
 app.use(express.static(path.join(__dirname, 'public')));
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
@@ -197,46 +256,90 @@ app.get('*', (req, res) => {
 
 function cleanup() {
   const now = Date.now();
+  let deletedCount = 0;
   [UPLOADS_DIR, CONVERTED_DIR].forEach(dir => {
     try {
       const entries = fs.readdirSync(dir, { withFileTypes: true });
       for (const ent of entries) {
+        if (!ent.isFile()) continue;
         const full = path.join(dir, ent.name);
         try {
           const stat = fs.statSync(full);
-          if (now - stat.mtimeMs > FILE_MAX_AGE_MS) fs.unlinkSync(full);
+          if (now - stat.mtimeMs > FILE_MAX_AGE_MS) {
+            fs.unlinkSync(full);
+            deletedCount += 1;
+          }
         } catch (_) {}
       }
     } catch (_) {}
   });
+  return deletedCount;
 }
 
 function cleanupAll() {
+  let deletedCount = 0;
   [UPLOADS_DIR, CONVERTED_DIR].forEach(dir => {
     try {
       const entries = fs.readdirSync(dir, { withFileTypes: true });
       for (const ent of entries) {
+        if (!ent.isFile()) continue;
         const full = path.join(dir, ent.name);
         try {
           fs.unlinkSync(full);
+          deletedCount += 1;
         } catch (_) {}
       }
     } catch (_) {}
   });
+  return deletedCount;
 }
 
-setInterval(cleanup, CLEANUP_INTERVAL_MS);
+setInterval(() => {
+  const deleted = cleanup();
+  if (deleted > 0) {
+    log('info', 'cleanup_completed', { scope: 'expired', deleted });
+  }
+}, CLEANUP_INTERVAL_MS);
 
 app.post('/api/cleanup', (req, res) => {
-  cleanup();
+  const deleted = cleanup();
+  log('info', 'cleanup_requested', { scope: 'expired', deleted });
   res.json({ ok: true, message: 'Nettoyage effectué (fichiers de plus d’1 h supprimés).' });
 });
 
 app.post('/api/cleanup/all', (req, res) => {
-  cleanupAll();
+  const deleted = cleanupAll();
+  log('info', 'cleanup_requested', { scope: 'all', deleted });
   res.json({ ok: true, message: 'Dossiers uploads et converted vidés.' });
 });
 
+app.use((err, req, res, next) => {
+  if (!err) return next();
+  if (res.headersSent) return next(err);
+
+  if (err instanceof multer.MulterError) {
+    const errorMessages = {
+      LIMIT_FILE_COUNT: `Trop de fichiers: maximum ${MAX_FILES}.`,
+      LIMIT_FILE_SIZE: 'Fichier trop volumineux: maximum 100 MB.',
+      LIMIT_UNEXPECTED_FILE: 'Champ de fichier invalide.'
+    };
+    log('error', 'multer_error', {
+      method: req.method,
+      path: req.originalUrl,
+      code: err.code,
+      error: serializeError(err)
+    });
+    return res.status(400).json({ error: errorMessages[err.code] || err.message });
+  }
+
+  log('error', 'unhandled_error', {
+    method: req.method,
+    path: req.originalUrl,
+    error: serializeError(err)
+  });
+  return res.status(500).json({ error: 'Erreur serveur interne.' });
+});
+
 app.listen(PORT, () => {
-  console.log(`ABCLIV écoute sur le port ${PORT}`);
+  log('info', 'server_started', { port: Number(PORT), version: APP_VERSION });
 });

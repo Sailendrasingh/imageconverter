@@ -87,11 +87,13 @@ puis relancer `npm start`.
 - Bouton **Tout réinitialiser** : réinitialise l’interface et vide `uploads/` + `converted/` via l’API
 - Nettoyage automatique des fichiers temporaires (toutes les 15 min, fichiers de plus d’1 h)
 - Endpoints de nettoyage : `POST /api/cleanup` et `POST /api/cleanup/all`
+- Endpoint de santé : `GET /health` → `{ "status": "ok", "version": "1.0" }`
 
 ## Docker (notes)
 
 - Le `Dockerfile` installe `imagemagick` et `libheif` via **Debian Bookworm + backports** (`libheif1`, `libheif-examples`) pour améliorer la compatibilité HEIC.
 - Le port interne de l'app reste **3000** dans le conteneur ; le port publié sur l’hôte (dans le `docker-compose.yml` actuel) est **3005**.
+- L'image Docker embarque un `HEALTHCHECK` basé sur `GET /health`.
 
 ## Structure
 

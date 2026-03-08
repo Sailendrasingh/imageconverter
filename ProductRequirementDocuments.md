@@ -1,6 +1,6 @@
 # PRD — ABCLIV · Convertisseur d'images web
-**Version** : 1.5  
-**Date** : 2026-02-25  
+**Version** : 1.6  
+**Date** : 2026-03-08  
 **Statut** : En cours de développement  
 **Owner** : À définir
 
@@ -76,6 +76,7 @@ Usage personnel / interne. Pas d'authentification. Pas de multi-tenant. Pas de S
 | Port publié (compose actuel) | `3005:3000` (hôte → conteneur) |
 | Réseau Docker (compose actuel) | Réseau externe `proxy` (intégration reverse proxy type NPM) |
 | Reverse proxy | Hors stack applicative ; intégration possible via le réseau `proxy` |
+| Healthcheck Docker | `HEALTHCHECK` dans le `Dockerfile`, basé sur `GET /health` |
 
 ### 2.4 Structure des fichiers — FIGÉE
 ```
@@ -104,9 +105,11 @@ Ces fonctionnalités existent et **ne doivent pas être modifiées** sauf demand
 ### 3.1 Upload de fichiers
 - Drag & drop sur la zone dédiée
 - Clic pour ouvrir le sélecteur de fichiers natif
+- Activation clavier de la drop zone via **Entrée** / **Espace**
 - Maximum **20 fichiers** par batch
 - Taille maximale par fichier : **100 MB**
 - Dédoublonnage par nom + taille (côté frontend)
+- Rejet explicite des extensions invalides côté backend, avec message d'erreur par fichier
 
 ### 3.2 Formats d'entrée acceptés
 `.jpg`, `.jpeg`, `.png`, `.webp`, `.avif`, `.heic`, `.tiff`, `.bmp`, `.gif`
@@ -139,6 +142,7 @@ Autres → ImageMagick directement → output
 ### 3.6 Nettoyage automatique
 - Interval : toutes les **15 minutes**
 - Supprime les fichiers de `uploads/` et `converted/` de plus de **1 heure**
+- Ne supprime que des **fichiers réguliers** (pas les sous-dossiers éventuels)
 - Nettoyage manuel disponible via `POST /api/cleanup` et `POST /api/cleanup/all`
 
 ### 3.7 Téléchargement et visualisation
@@ -153,12 +157,17 @@ Autres → ImageMagick directement → output
 |---|---|
 | Header | Image **logo.png** (public/), hauteur 4rem ; texte **« Image converter »** en Arial 2.25rem, couleur **`#EE743C`** ; description à droite ; bouton **Tout réinitialiser** (reset UI + appel `POST /api/cleanup/all` pour vider `uploads/` et `converted/`) |
 | Badges formats | Ligne de badges des formats supportés (HEIC en jaune accent) |
-| Drop zone | Zone centrale avec icône, titre, sous-titre |
+| Drop zone | Zone centrale avec icône, titre, sous-titre ; accessible au clavier via **Entrée** / **Espace** |
 | File queue | Liste des fichiers sélectionnés : **miniature** (thumbnail) par image, extension, nom, taille, bouton suppression. Formats classiques via `URL.createObjectURL`; HEIC via preview client `heic2any` (fallback vide si échec) |
-| Settings bar | Apparaît après sélection de fichiers : format + qualité + bouton Convertir |
+| Settings bar | Apparaît après sélection de fichiers : format + qualité + bouton Convertir ; contrôles verrouillés pendant la conversion |
 | Progress section | Barre de progression réelle (Conversion 1/N…, 2/N…) ; statut **par image** : En attente → Conversion en cours… → Converti / Erreur |
 | Results section | Liste des résultats succès/erreur ; pour chaque succès : bouton **Visualiser** (nouvel onglet) + bouton **Télécharger** ; "Tout télécharger" si ≥ 2 succès |
 | Footer | Mention locale + libs utilisées |
+
+### 3.9 Observabilité et santé
+- Endpoint `GET /health` retournant `{ "status": "ok", "version": "1.0" }`
+- Logs structurés **JSON** sur stdout/stderr (startup, requêtes HTTP, erreurs, nettoyages)
+- Image Docker avec `HEALTHCHECK` basé sur `GET /health`
 
 ---
 
@@ -200,6 +209,7 @@ Grille CSS via `body::before` avec `background-image` double gradient, `backgrou
 ### 5.1 Routes existantes
 | Méthode | Route | Description |
 |---|---|---|
+| `GET` | `/health` | Endpoint de santé pour supervision / Docker healthcheck |
 | `GET` | `/*` | Sert les fichiers statiques de `public/` |
 | `GET` | `/converted/*` | Sert les fichiers convertis |
 | `POST` | `/api/convert` | Conversion (multipart/form-data) |
@@ -212,6 +222,11 @@ Grille CSS via `body::before` avec `background-image` double gradient, `backgrou
 - Champ `images` : tableau de fichiers (max 20)
 - Champ `format` : string (`jpeg` | `png` | `webp` | `avif`), défaut `jpeg`
 - Champ `quality` : number (0–100), défaut `85`
+
+**Comportement :**
+- Si au moins un fichier valide est traité, la route répond `200` avec `results` et `errors`
+- Si aucun fichier valide n'est retenu, la route répond `400`
+- Les extensions refusées sont remontées dans `errors` avec un message explicite
 
 **Response success (200) :**
 ```json
@@ -238,6 +253,9 @@ Grille CSS via `body::before` avec `background-image` double gradient, `backgrou
 ```json
 { "error": "Aucun fichier uploadé" }
 { "error": "Format de sortie invalide: xxx" }
+{ "results": [], "errors": [{ "file": "bad.txt", "error": "Format de fichier invalide: .txt" }] }
+{ "error": "Trop de fichiers: maximum 20." }
+{ "error": "Fichier trop volumineux: maximum 100 MB." }
 ```
 
 ### 5.3 POST /api/cleanup
@@ -254,6 +272,14 @@ Vide immédiatement les dossiers `uploads/` et `converted/`.
 **Response success (200) :**
 ```json
 { "ok": true, "message": "Dossiers uploads et converted vidés." }
+```
+
+### 5.5 GET /health
+Retourne l'état de santé minimal de l'application.
+
+**Response success (200) :**
+```json
+{ "status": "ok", "version": "1.0" }
 ```
 
 ---
@@ -283,8 +309,8 @@ Vide immédiatement les dossiers `uploads/` et `converted/`.
 - [ ] **Drag & drop pour réordonner** la file d'attente
 - [ ] **Options avancées par format** : ex. effort AVIF
 - [x] **Redimensionnement (PNG)** : pour le PNG, le curseur contrôle déjà la résolution (réduction des dimensions en %) ; option width/height explicite possible en backlog
-- [ ] **Page de santé** : endpoint `GET /health` retournant `{ status: "ok", version: "1.0" }`
-- [ ] **Logs structurés** : remplacer `console.log` par un logger (à choisir avec l'utilisateur)
+- [x] **Page de santé** : endpoint `GET /health` retournant `{ status: "ok", version: "1.0" }`
+- [x] **Logs structurés** : logs JSON sur stdout/stderr, sans dépendance supplémentaire
 
 ### 7.3 Priorité basse
 - [ ] **Thème clair** : toggle light/dark mode
@@ -301,6 +327,7 @@ Vide immédiatement les dossiers `uploads/` et `converted/`.
 - Les noms de fichiers utilisateur ne sont **jamais** utilisés en sortie sur le filesystem (UUID uniquement)
 - Pas d'exposition du chemin filesystem dans les réponses API
 - Commandes shell construites avec les chemins entre guillemets pour éviter l'injection basique
+- Côté frontend, les noms de fichiers et messages serveur sont rendus en **texte** (pas d'injection HTML brute)
 
 > ⚠️ **Ce qui N'EST PAS implémenté et nécessite accord avant ajout :** rate limiting, authentification, CSRF protection, helmet.js, sanitisation avancée des inputs.
 
@@ -344,12 +371,12 @@ Ces décisions sont **intentionnellement laissées en suspens**. L'IA doit les p
 | # | Question | Impact |
 |---|---|---|
 | Q1 | Quelle librairie utiliser pour le ZIP ? (`archiver`, `jszip`, autre ?) | Feature 7.1 |
-| Q2 | Faut-il un système de logs fichier ou uniquement console ? | 7.2 |
+| Q2 (résolu v1.6) | Logs structurés JSON sur stdout/stderr uniquement ; pas de logs fichier en v1 | 7.2 |
 | Q3 (résolu v1.4) | Preview générée côté client (`URL.createObjectURL` + `heic2any` pour HEIC) ; pas de preview serveur en v1 | 7.1 |
 | Q4 | La barre de progression réelle doit-elle utiliser SSE ou polling ? | 7.1 |
 | Q5 | Faut-il limiter le débit des requêtes (rate limiting) ? Si oui, par IP ou global ? | 8.1 |
 | Q6 | Le redimensionnement doit-il conserver le ratio ? Avec quel comportement (crop, letterbox, stretch) ? | 7.2 |
-| Q7 | Faut-il ajouter un endpoint `GET /health` pour Docker healthcheck ? | 7.2 |
+| Q7 (résolu v1.6) | Endpoint `GET /health` ajouté ; utilisé par le `HEALTHCHECK` Docker | 7.2 |
 | Q8 | Le nom du fichier téléchargé doit-il inclure un suffixe (ex: `photo_converted.jpg`) ? | UX |
 
 ---
@@ -379,5 +406,6 @@ Ces décisions sont **intentionnellement laissées en suspens**. L'IA doit les p
 | 1.3 | 2026-02-24 | **Header** : logo image `public/logo.png` (hauteur 4rem) ; titre remplacé par « Image converter » (Arial, 2.25rem). Routes **POST /api/cleanup** et **POST /api/cleanup/all** pour vider uploads/converted. |
 | 1.4 | 2026-02-25 | **Preview HEIC** côté client via `heic2any` local (`public/heic2any.min.js`, chargement à la demande). **Tout réinitialiser** déclenche aussi `POST /api/cleanup/all`. **Téléchargement** : correction des noms de fichiers accentués (UTF-8) dans `originalName` / `downloadName`. Section API mise à jour avec routes cleanup documentées. |
 | 1.5 | 2026-02-25 | **Docker** : `libheif` installé via **Debian bookworm-backports** (`libheif1` + `libheif-examples`) pour améliorer la compatibilité HEIC. **Compose** : port publié `3005:3000` et rattachement au réseau Docker externe `proxy` (intégration NPM/reverse proxy). **UI** : couleur du titre « Image converter » = `#EE743C`. |
+| 1.6 | 2026-03-08 | **API** : ajout de `GET /health`. **Logs** : logs JSON structurés sur stdout/stderr. **Upload** : rejet explicite des extensions invalides et erreurs 4xx documentées (`LIMIT_FILE_COUNT`, taille max). **UI** : drop zone accessible au clavier, verrouillage des contrôles pendant la conversion, parsing d'erreurs tolérant au non-JSON. **Docker** : ajout d'un `HEALTHCHECK` basé sur `/health`. |
 
 *Toute modification de ce PRD doit être documentée avec la date et la version.*
