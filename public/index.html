@@ -47,9 +47,133 @@
     .layout {
       position: relative;
       z-index: 1;
-      max-width: 720px;
+      max-width: 860px;
       margin: 0 auto;
       padding: 2rem 1rem 4rem;
+    }
+
+    .workflow {
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+    }
+
+    .flow-panel {
+      position: relative;
+      padding: 1.15rem;
+      background:
+        linear-gradient(180deg, rgba(255,255,255,0.02), transparent 28%),
+        var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      overflow: hidden;
+    }
+
+    .flow-panel::before {
+      content: '';
+      position: absolute;
+      inset: 0 auto auto 0;
+      width: 100%;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(232, 255, 71, 0.25), transparent);
+      opacity: 0.8;
+    }
+
+    .flow-panel.is-active {
+      border-color: rgba(232, 255, 71, 0.18);
+      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.18);
+    }
+
+    .flow-panel-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 1rem;
+      margin-bottom: 1rem;
+    }
+
+    .flow-step {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.85rem;
+    }
+
+    .flow-step-index {
+      width: 2rem;
+      height: 2rem;
+      border-radius: 999px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--accent);
+      font-family: 'DM Mono', monospace;
+      font-size: 0.8rem;
+      flex-shrink: 0;
+    }
+
+    .flow-step-copy h2 {
+      font-size: 1rem;
+      font-weight: 700;
+      margin-bottom: 0.2rem;
+    }
+
+    .flow-step-copy p {
+      font-size: 0.82rem;
+      color: var(--text-muted);
+      max-width: 30rem;
+    }
+
+    .flow-status {
+      flex-shrink: 0;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 0.3rem 0.65rem;
+      font-family: 'DM Mono', monospace;
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      background: var(--surface2);
+    }
+
+    .flow-status.is-idle {
+      color: var(--text-muted);
+      border-color: var(--border);
+      background: var(--surface2);
+    }
+
+    .flow-status.is-info {
+      color: var(--accent);
+      border-color: rgba(232, 255, 71, 0.3);
+      background: rgba(232, 255, 71, 0.08);
+    }
+
+    .flow-status.is-success {
+      color: var(--success);
+      border-color: rgba(74, 222, 128, 0.28);
+      background: rgba(74, 222, 128, 0.08);
+    }
+
+    .flow-status.is-error {
+      color: var(--error);
+      border-color: rgba(248, 113, 113, 0.28);
+      background: rgba(248, 113, 113, 0.08);
+    }
+
+    .flow-status.is-mixed {
+      color: #ffd166;
+      border-color: rgba(255, 209, 102, 0.3);
+      background: rgba(255, 209, 102, 0.08);
+    }
+
+    .panel-placeholder {
+      font-size: 0.88rem;
+      color: var(--text-muted);
+      padding: 1rem;
+      background: rgba(255,255,255,0.02);
+      border: 1px dashed var(--border);
+      border-radius: 12px;
+      margin-bottom: 1rem;
     }
 
     header {
@@ -99,7 +223,7 @@
       display: flex;
       flex-wrap: wrap;
       gap: 0.5rem;
-      margin-bottom: 2rem;
+      margin-bottom: 1rem;
     }
 
     .badge {
@@ -119,13 +243,45 @@
 
     .drop-zone {
       border: 2px dashed var(--border);
-      background: var(--surface);
+      background:
+        radial-gradient(circle at top, rgba(232, 255, 71, 0.08), transparent 48%),
+        var(--surface);
       border-radius: var(--radius);
-      padding: 3rem 2rem;
+      padding: 3.4rem 2rem;
       text-align: center;
       cursor: pointer;
       transition: scale 0.2s, border-color 0.2s, background 0.2s;
-      margin-bottom: 1.5rem;
+      margin-bottom: 1rem;
+      min-height: 15rem;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .drop-zone::after {
+      content: '';
+      position: absolute;
+      width: 9rem;
+      height: 9rem;
+      border-radius: 999px;
+      background: radial-gradient(circle, rgba(255, 107, 53, 0.12), transparent 68%);
+      top: -3rem;
+      right: -2rem;
+      pointer-events: none;
+    }
+
+    .drop-zone.is-disabled {
+      opacity: 0.65;
+      cursor: not-allowed;
+    }
+
+    .drop-zone.is-loaded {
+      border-style: solid;
+      background:
+        radial-gradient(circle at top, rgba(232, 255, 71, 0.12), transparent 44%),
+        var(--surface);
     }
 
     .drop-zone:hover,
@@ -152,6 +308,26 @@
       color: var(--text-muted);
     }
 
+    .drop-zone-meta {
+      margin-top: 1rem;
+      display: inline-flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 0.5rem;
+      position: relative;
+      z-index: 1;
+    }
+
+    .drop-zone-meta span {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 0.3rem 0.55rem;
+      background: rgba(255,255,255,0.02);
+    }
+
     input[type="file"] {
       display: none;
     }
@@ -173,25 +349,34 @@
 
     .file-item {
       display: flex;
-      align-items: center;
+      align-items: flex-start;
       justify-content: space-between;
-      gap: 0.75rem;
-      padding: 0.6rem 0.75rem;
+      gap: 0.9rem;
+      padding: 0.8rem;
       background: var(--surface2);
       border: 1px solid var(--border);
-      border-radius: 8px;
+      border-radius: 12px;
       margin-bottom: 0.5rem;
       font-size: 0.9rem;
       animation: slideIn 0.2s ease;
     }
 
+    .file-item .file-main {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.85rem;
+      flex: 1;
+      min-width: 0;
+    }
+
     .file-item .file-thumb {
       flex-shrink: 0;
-      width: 48px;
-      height: 48px;
-      border-radius: 6px;
+      width: 62px;
+      height: 62px;
+      border-radius: 10px;
       overflow: hidden;
       background: var(--border);
+      border: 1px solid rgba(255,255,255,0.04);
     }
 
     .file-item .file-thumb img {
@@ -204,17 +389,52 @@
     .file-item .file-info {
       flex: 1;
       min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 0.45rem;
+    }
+
+    .file-item .file-top {
+      display: flex;
+      align-items: center;
+      gap: 0.55rem;
+      flex-wrap: wrap;
+      min-width: 0;
+    }
+
+    .file-item .file-ext {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.68rem;
+      padding: 0.22rem 0.45rem;
+      border-radius: 999px;
+      background: rgba(232, 255, 71, 0.08);
+      color: var(--accent);
+      border: 1px solid rgba(232, 255, 71, 0.2);
     }
 
     .file-item .name {
-      font-family: 'DM Mono', monospace;
-      font-size: 0.85rem;
+      font-size: 0.92rem;
+      font-weight: 600;
+      min-width: 0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
-    .file-item .meta {
+    .file-item .file-meta-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem;
+    }
+
+    .file-item .meta-pill {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.72rem;
       color: var(--text-muted);
-      font-size: 0.8rem;
-      margin-left: 0.5rem;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 0.22rem 0.45rem;
+      background: rgba(255,255,255,0.02);
     }
 
     .file-item button {
@@ -225,6 +445,7 @@
       padding: 0.25rem;
       font-size: 1.1rem;
       line-height: 1;
+      margin-left: auto;
     }
 
     .file-item button:hover {
@@ -233,7 +454,7 @@
 
     .settings-bar {
       display: flex;
-      align-items: center;
+      align-items: flex-end;
       flex-wrap: wrap;
       gap: 1rem;
       padding: 1rem;
@@ -248,6 +469,28 @@
       color: var(--text-muted);
     }
 
+    .batch-summary {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.6rem;
+      margin-bottom: 1rem;
+    }
+
+    .summary-chip {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.75rem;
+      padding: 0.45rem 0.7rem;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      color: var(--text);
+    }
+
+    .summary-chip strong {
+      color: var(--accent);
+      font-weight: 500;
+    }
+
     .settings-bar select {
       font-family: 'DM Mono', monospace;
       padding: 0.5rem 0.75rem;
@@ -258,10 +501,28 @@
       font-size: 0.9rem;
     }
 
+    .settings-bar .btn-primary {
+      margin-left: auto;
+      min-width: 10rem;
+    }
+
     .quality-wrap {
       display: flex;
       align-items: center;
       gap: 0.5rem;
+    }
+
+    .setting-copy {
+      display: flex;
+      flex-direction: column;
+      gap: 0.15rem;
+    }
+
+    .setting-help {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      max-width: 15rem;
     }
 
     .quality-wrap input[type="range"] {
@@ -313,14 +574,84 @@
       flex-wrap: wrap;
     }
 
+    .conversion-banner {
+      margin-bottom: 1rem;
+      padding: 0.75rem 1rem;
+      background: rgba(232, 255, 71, 0.08);
+      border: 1px solid rgba(232, 255, 71, 0.25);
+      border-radius: 10px;
+      color: var(--accent);
+      font-size: 0.85rem;
+    }
+
     .progress-section {
       margin-bottom: 1.5rem;
+    }
+
+    .current-file-card {
+      display: grid;
+      grid-template-columns: 4rem 1fr;
+      gap: 0.85rem;
+      margin-bottom: 1rem;
+      padding: 0.85rem;
+      border: 1px solid rgba(232, 255, 71, 0.18);
+      background: rgba(232, 255, 71, 0.04);
+      border-radius: 12px;
+    }
+
+    .current-file-thumb {
+      width: 4rem;
+      height: 4rem;
+      border-radius: 10px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--accent);
+      font-family: 'DM Mono', monospace;
+      font-size: 0.78rem;
+    }
+
+    .current-file-thumb img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .current-file-kicker {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.72rem;
+      color: var(--accent);
+      margin-bottom: 0.2rem;
+    }
+
+    .current-file-name {
+      font-size: 0.95rem;
+      font-weight: 600;
+      margin-bottom: 0.2rem;
+      word-break: break-word;
+    }
+
+    .current-file-meta {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.74rem;
+      color: var(--text-muted);
     }
 
     .progress-section .label {
       font-size: 0.85rem;
       color: var(--text-muted);
       margin-bottom: 0.5rem;
+    }
+
+    .progress-current {
+      margin-top: 0.5rem;
+      font-family: 'DM Mono', monospace;
+      font-size: 0.75rem;
+      color: var(--text-muted);
     }
 
     .progress-bar-wrap {
@@ -342,6 +673,65 @@
       font-weight: 600;
       margin-bottom: 0.75rem;
       color: var(--text-muted);
+    }
+
+    .result-overview {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 0.75rem;
+      margin-bottom: 1rem;
+    }
+
+    .overview-card {
+      padding: 0.85rem;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: var(--surface2);
+    }
+
+    .overview-card-label {
+      display: block;
+      font-family: 'DM Mono', monospace;
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      margin-bottom: 0.35rem;
+    }
+
+    .overview-card-value {
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .result-group {
+      margin-bottom: 1rem;
+      padding: 0.9rem;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+    }
+
+    .result-group-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      margin-bottom: 0.75rem;
+    }
+
+    .result-group-title {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .result-group-count {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 0.2rem 0.55rem;
     }
 
     .result-item {
@@ -415,6 +805,29 @@
       margin-top: 1rem;
     }
 
+    .live-region {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+
+    .drop-zone:focus-visible,
+    .btn:focus-visible,
+    .result-item .download-btn:focus-visible,
+    .result-item .view-btn:focus-visible,
+    .settings-bar select:focus-visible,
+    .quality-wrap input[type="range"]:focus-visible,
+    .file-item button:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 3px;
+    }
+
     footer {
       margin-top: 3rem;
       padding-top: 1.5rem;
@@ -429,6 +842,65 @@
     @keyframes slideIn {
       from { transform: translateY(-8px); opacity: 0; }
       to { transform: translateY(0); opacity: 1; }
+    }
+
+    @media (max-width: 760px) {
+      .layout {
+        padding: 1.4rem 0.9rem 5.5rem;
+      }
+
+      .flow-panel-head,
+      header,
+      .header-actions {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+
+      .flow-status,
+      .header-desc {
+        max-width: none;
+      }
+
+      .drop-zone {
+        padding: 2.6rem 1.2rem;
+        min-height: 13rem;
+      }
+
+      .settings-bar {
+        display: grid;
+        grid-template-columns: 1fr;
+        align-items: stretch;
+      }
+
+      .quality-wrap {
+        flex-wrap: wrap;
+      }
+
+      .settings-bar .btn-primary {
+        width: 100%;
+        position: sticky;
+        bottom: 0.85rem;
+        box-shadow: 0 14px 30px rgba(0, 0, 0, 0.28);
+      }
+
+      .result-overview {
+        grid-template-columns: 1fr;
+      }
+
+      .file-item,
+      .result-item {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .file-item .file-main {
+        width: 100%;
+      }
+
+      .result-item .result-actions {
+        width: 100%;
+        flex-wrap: wrap;
+      }
     }
 
     .hidden { display: none !important; }
@@ -447,59 +919,168 @@
       </div>
     </header>
 
-    <div class="badges">
-      <span class="badge">JPG</span>
-      <span class="badge">PNG</span>
-      <span class="badge">WebP</span>
-      <span class="badge">AVIF</span>
-      <span class="badge">TIFF</span>
-      <span class="badge">BMP</span>
-      <span class="badge">GIF</span>
-      <span class="badge accent">HEIC</span>
-    </div>
+    <main class="workflow">
+      <section class="flow-panel is-active" id="importPanel">
+        <div class="flow-panel-head">
+          <div class="flow-step">
+            <span class="flow-step-index">1</span>
+            <div class="flow-step-copy">
+              <h2>Importer</h2>
+              <p>Ajoutez vos images, vérifiez la file d’attente et préparez le lot avant conversion.</p>
+            </div>
+          </div>
+          <span class="flow-status is-idle" id="importStatus">Aucun fichier</span>
+        </div>
 
-    <div class="drop-zone" id="dropZone" tabindex="0" role="button" aria-label="Sélectionner des images à convertir" aria-disabled="false" aria-busy="false">
-      <div class="icon">📁</div>
-      <h2>Déposez vos images ici</h2>
-      <p>ou cliquez pour parcourir · max 20 fichiers, 100 Mo par fichier</p>
-      <input type="file" id="fileInput" accept=".jpg,.jpeg,.png,.webp,.avif,.heic,.tiff,.bmp,.gif" multiple>
-    </div>
+        <div class="badges">
+          <span class="badge">JPG</span>
+          <span class="badge">PNG</span>
+          <span class="badge">WebP</span>
+          <span class="badge">AVIF</span>
+          <span class="badge">TIFF</span>
+          <span class="badge">BMP</span>
+          <span class="badge">GIF</span>
+          <span class="badge accent">HEIC</span>
+        </div>
 
-    <div class="file-queue hidden" id="fileQueue">
-      <h3>Fichiers sélectionnés</h3>
-      <ul class="file-list" id="fileList"></ul>
-    </div>
+        <div class="drop-zone" id="dropZone" tabindex="0" role="button" aria-label="Sélectionner des images à convertir" aria-disabled="false" aria-busy="false">
+          <div class="icon">📁</div>
+          <h2 id="dropZoneTitle">Déposez vos images ici</h2>
+          <p id="dropZoneText">ou cliquez pour parcourir. 20 fichiers max, 100 Mo par fichier.</p>
+          <div class="drop-zone-meta" aria-hidden="true">
+            <span>9 formats d’entrée</span>
+            <span>4 sorties</span>
+            <span>Traitement local</span>
+          </div>
+          <input type="file" id="fileInput" accept=".jpg,.jpeg,.png,.webp,.avif,.heic,.tiff,.bmp,.gif" multiple>
+        </div>
 
-    <div class="settings-bar hidden" id="settingsBar">
-      <label>Format de sortie</label>
-      <select id="formatSelect">
-        <option value="jpeg">JPEG</option>
-        <option value="png">PNG</option>
-        <option value="webp" selected>WebP</option>
-        <option value="avif">AVIF</option>
-      </select>
-      <div class="quality-wrap">
-        <label>Qualité</label>
-        <input type="range" id="qualityRange" min="0" max="100" value="85">
-        <span id="qualityValue">85</span>
-      </div>
-      <button type="button" class="btn btn-primary" id="convertBtn">Convertir</button>
-    </div>
+        <div class="file-queue hidden" id="fileQueue">
+          <h3>Fichiers sélectionnés</h3>
+          <ul class="file-list" id="fileList"></ul>
+        </div>
+      </section>
 
-    <div class="progress-section hidden" id="progressSection">
-      <div class="label" id="progressLabel">Conversion en cours…</div>
-      <div class="progress-bar-wrap">
-        <div class="progress-bar" id="progressBar"></div>
-      </div>
-    </div>
+      <section class="flow-panel" id="settingsPanel">
+        <div class="flow-panel-head">
+          <div class="flow-step">
+            <span class="flow-step-index">2</span>
+            <div class="flow-step-copy">
+              <h2>Régler</h2>
+              <p>Choisissez le format cible puis ajustez le réglage adapté à la sortie avant de lancer le lot.</p>
+            </div>
+          </div>
+          <span class="flow-status is-idle" id="settingsStatus">En attente</span>
+        </div>
 
-    <div class="results-section hidden" id="resultsSection">
-      <h3>Résultats</h3>
-      <div id="resultsList"></div>
-      <div class="download-all-wrap hidden" id="downloadAllWrap">
-        <button type="button" class="btn btn-primary" id="downloadAllBtn">Tout télécharger</button>
-      </div>
-    </div>
+        <p class="panel-placeholder" id="settingsPlaceholder">Ajoutez un lot pour choisir un format de sortie et préparer la conversion.</p>
+
+        <div class="batch-summary hidden" id="batchSummary" aria-live="polite">
+          <span class="summary-chip" id="summaryFiles"></span>
+          <span class="summary-chip" id="summarySize"></span>
+          <span class="summary-chip" id="summaryFormat"></span>
+          <span class="summary-chip" id="summarySetting"></span>
+        </div>
+
+        <div class="settings-bar hidden" id="settingsBar">
+          <label>Format de sortie</label>
+          <select id="formatSelect">
+            <option value="jpeg">JPEG</option>
+            <option value="png">PNG</option>
+            <option value="webp" selected>WebP</option>
+            <option value="avif">AVIF</option>
+          </select>
+          <div class="quality-wrap">
+            <div class="setting-copy">
+              <label for="qualityRange" id="qualityLabel">Qualité</label>
+              <span class="setting-help" id="qualityHelp">Qualité 85/100</span>
+            </div>
+            <input type="range" id="qualityRange" min="0" max="100" value="85" aria-describedby="qualityHelp">
+            <span id="qualityValue">85</span>
+          </div>
+          <button type="button" class="btn btn-primary" id="convertBtn">Convertir</button>
+        </div>
+      </section>
+
+      <section class="flow-panel" id="outputPanel">
+        <div class="flow-panel-head">
+          <div class="flow-step">
+            <span class="flow-step-index">3</span>
+            <div class="flow-step-copy">
+              <h2>Télécharger</h2>
+              <p>Suivez le traitement en temps réel, visualisez chaque résultat puis récupérez vos fichiers convertis.</p>
+            </div>
+          </div>
+          <span class="flow-status is-idle" id="outputStatus">En attente</span>
+        </div>
+
+        <p class="panel-placeholder" id="resultsPlaceholder">Les fichiers convertis et les erreurs de traitement apparaîtront ici.</p>
+
+        <div class="conversion-banner hidden" id="conversionBanner" role="status" aria-live="polite">
+          Conversion en cours. L'import, la suppression et la réinitialisation sont temporairement désactivés.
+        </div>
+
+        <div class="progress-section hidden" id="progressSection">
+          <div class="current-file-card hidden" id="currentFileCard">
+            <div class="current-file-thumb" id="currentFileThumb">IMG</div>
+            <div class="current-file-copy">
+              <div class="current-file-kicker">Fichier en cours</div>
+              <div class="current-file-name" id="currentFileName">Préparation…</div>
+              <div class="current-file-meta" id="currentFileMeta">Analyse des fichiers sélectionnés</div>
+            </div>
+          </div>
+          <div class="label" id="progressLabel" aria-live="polite">Conversion en cours…</div>
+          <div class="progress-bar-wrap">
+            <div class="progress-bar" id="progressBar"></div>
+          </div>
+          <div class="progress-current" id="progressCurrent">Préparation du lot…</div>
+        </div>
+
+        <div class="result-overview hidden" id="resultOverview">
+          <div class="overview-card">
+            <span class="overview-card-label">Réussites</span>
+            <span class="overview-card-value" id="overviewSuccesses">0</span>
+          </div>
+          <div class="overview-card">
+            <span class="overview-card-label">Erreurs</span>
+            <span class="overview-card-value" id="overviewErrors">0</span>
+          </div>
+          <div class="overview-card">
+            <span class="overview-card-label">Taille générée</span>
+            <span class="overview-card-value" id="overviewOutputSize">0 o</span>
+          </div>
+        </div>
+
+        <div class="results-section hidden" id="resultsSection">
+          <h3>Résultats</h3>
+          <div class="result-group hidden" id="activeGroup">
+            <div class="result-group-head">
+              <span class="result-group-title">Traitement en cours</span>
+              <span class="result-group-count" id="activeCount">0</span>
+            </div>
+            <div id="activeList"></div>
+          </div>
+          <div class="result-group hidden" id="successGroup">
+            <div class="result-group-head">
+              <span class="result-group-title">Convertis</span>
+              <span class="result-group-count" id="successCount">0</span>
+            </div>
+            <div id="successList"></div>
+            <div class="download-all-wrap hidden" id="downloadAllWrap">
+              <button type="button" class="btn btn-primary" id="downloadAllBtn">Tout télécharger</button>
+            </div>
+          </div>
+          <div class="result-group hidden" id="errorGroup">
+            <div class="result-group-head">
+              <span class="result-group-title">Erreurs</span>
+              <span class="result-group-count" id="errorCount">0</span>
+            </div>
+            <div id="errorList"></div>
+          </div>
+          <div class="live-region" id="errorLiveRegion" aria-live="assertive" aria-atomic="true"></div>
+        </div>
+      </section>
+    </main>
 
     <footer>
       Usage local uniquement · Aucune donnée n’est envoyée à l’extérieur · Express, Multer, ImageMagick, libheif
@@ -512,21 +1093,57 @@
     const DOWNLOAD_DELAY_MS = 300;
 
     const dropZone = document.getElementById('dropZone');
+    const dropZoneTitle = document.getElementById('dropZoneTitle');
+    const dropZoneText = document.getElementById('dropZoneText');
     const fileInput = document.getElementById('fileInput');
     const fileQueue = document.getElementById('fileQueue');
     const fileList = document.getElementById('fileList');
+    const importPanel = document.getElementById('importPanel');
+    const importStatus = document.getElementById('importStatus');
+    const settingsPanel = document.getElementById('settingsPanel');
+    const settingsStatus = document.getElementById('settingsStatus');
+    const settingsPlaceholder = document.getElementById('settingsPlaceholder');
+    const outputPanel = document.getElementById('outputPanel');
+    const outputStatus = document.getElementById('outputStatus');
+    const resultsPlaceholder = document.getElementById('resultsPlaceholder');
+    const batchSummary = document.getElementById('batchSummary');
+    const summaryFiles = document.getElementById('summaryFiles');
+    const summarySize = document.getElementById('summarySize');
+    const summaryFormat = document.getElementById('summaryFormat');
+    const summarySetting = document.getElementById('summarySetting');
     const settingsBar = document.getElementById('settingsBar');
     const formatSelect = document.getElementById('formatSelect');
+    const qualityLabel = document.getElementById('qualityLabel');
+    const qualityHelp = document.getElementById('qualityHelp');
     const qualityRange = document.getElementById('qualityRange');
     const qualityValue = document.getElementById('qualityValue');
     const convertBtn = document.getElementById('convertBtn');
+    const conversionBanner = document.getElementById('conversionBanner');
     const progressSection = document.getElementById('progressSection');
     const progressBar = document.getElementById('progressBar');
     const progressLabel = document.getElementById('progressLabel');
+    const progressCurrent = document.getElementById('progressCurrent');
+    const currentFileCard = document.getElementById('currentFileCard');
+    const currentFileThumb = document.getElementById('currentFileThumb');
+    const currentFileName = document.getElementById('currentFileName');
+    const currentFileMeta = document.getElementById('currentFileMeta');
+    const resultOverview = document.getElementById('resultOverview');
+    const overviewSuccesses = document.getElementById('overviewSuccesses');
+    const overviewErrors = document.getElementById('overviewErrors');
+    const overviewOutputSize = document.getElementById('overviewOutputSize');
     const resultsSection = document.getElementById('resultsSection');
-    const resultsList = document.getElementById('resultsList');
+    const activeGroup = document.getElementById('activeGroup');
+    const activeList = document.getElementById('activeList');
+    const activeCount = document.getElementById('activeCount');
+    const successGroup = document.getElementById('successGroup');
+    const successList = document.getElementById('successList');
+    const successCount = document.getElementById('successCount');
+    const errorGroup = document.getElementById('errorGroup');
+    const errorList = document.getElementById('errorList');
+    const errorCount = document.getElementById('errorCount');
     const downloadAllWrap = document.getElementById('downloadAllWrap');
     const downloadAllBtn = document.getElementById('downloadAllBtn');
+    const errorLiveRegion = document.getElementById('errorLiveRegion');
     const resetBtn = document.getElementById('resetBtn');
 
     let selectedFiles = [];
@@ -534,6 +1151,9 @@
     let renderFileListToken = 0;
     let heic2anyLoadPromise = null;
     let isConverting = false;
+    let currentFilePreviewUrl = '';
+    let currentFileCardToken = 0;
+    const fileDimensionCache = new Map();
 
     async function resetAll() {
       if (isConverting) return;
@@ -546,11 +1166,10 @@
       settingsBar.classList.add('hidden');
       progressSection.classList.add('hidden');
       resultsSection.classList.add('hidden');
-      resultsList.innerHTML = '';
-      downloadAllWrap.classList.add('hidden');
       formatSelect.value = 'webp';
       qualityRange.value = 85;
-      qualityValue.textContent = '85';
+      clearResults();
+      updateSettingsCopy();
       syncControls();
 
       try {
@@ -574,6 +1193,10 @@
       return `${file.name}-${file.size}`;
     }
 
+    function fileCacheKey(file) {
+      return `${file.name}-${file.size}-${file.lastModified || 0}`;
+    }
+
     function dedup(files, existingFiles = []) {
       const seen = new Set(existingFiles.map(fileKey));
       return Array.from(files).filter(f => {
@@ -584,16 +1207,236 @@
       });
     }
 
+    function formatOutputName(format) {
+      return format === 'jpeg' ? 'JPEG' : format.toUpperCase();
+    }
+
+    function getSliderState() {
+      const rawValue = Number(qualityRange.value);
+      const effectiveValue = formatSelect.value === 'png' ? Math.max(5, rawValue) : rawValue;
+
+      if (formatSelect.value === 'png') {
+        return {
+          label: 'Résolution',
+          displayValue: `${effectiveValue}%`,
+          help: effectiveValue === rawValue
+            ? `${effectiveValue}% des dimensions originales`
+            : `${effectiveValue}% des dimensions originales (minimum appliqué)`,
+          summary: `Résolution ${effectiveValue}%`
+        };
+      }
+
+      return {
+        label: 'Qualité',
+        displayValue: String(rawValue),
+        help: `Qualité ${rawValue}/100`,
+        summary: `Qualité ${rawValue}/100`
+      };
+    }
+
+    function updateSettingsCopy() {
+      const sliderState = getSliderState();
+      qualityLabel.textContent = sliderState.label;
+      qualityValue.textContent = sliderState.displayValue;
+      qualityHelp.textContent = sliderState.help;
+      updateBatchSummary();
+      updateWorkflowState();
+    }
+
+    function updateBatchSummary() {
+      const hasFiles = selectedFiles.length > 0;
+      batchSummary.classList.toggle('hidden', !hasFiles);
+      if (!hasFiles) return;
+
+      const totalSize = selectedFiles.reduce((sum, file) => sum + file.size, 0);
+      const sliderState = getSliderState();
+
+      summaryFiles.innerHTML = `<strong>${selectedFiles.length}</strong> fichier${selectedFiles.length > 1 ? 's' : ''}`;
+      summarySize.innerHTML = `<strong>${formatSize(totalSize)}</strong> au total`;
+      summaryFormat.innerHTML = `Sortie <strong>${formatOutputName(formatSelect.value)}</strong>`;
+      summarySetting.innerHTML = `<strong>${sliderState.summary}</strong>`;
+    }
+
+    function clearResults() {
+      activeList.innerHTML = '';
+      successList.innerHTML = '';
+      errorList.innerHTML = '';
+      activeCount.textContent = '0';
+      successCount.textContent = '0';
+      errorCount.textContent = '0';
+      activeGroup.classList.add('hidden');
+      successGroup.classList.add('hidden');
+      errorGroup.classList.add('hidden');
+      downloadAllWrap.classList.add('hidden');
+      downloadAllBtn.onclick = null;
+      errorLiveRegion.textContent = '';
+      progressCurrent.textContent = 'Préparation du lot…';
+      resultOverview.classList.add('hidden');
+      overviewSuccesses.textContent = '0';
+      overviewErrors.textContent = '0';
+      overviewOutputSize.textContent = '0 o';
+      clearCurrentFileCard();
+    }
+
+    function resetProgress() {
+      progressSection.classList.add('hidden');
+      progressBar.style.width = '0%';
+      progressLabel.textContent = 'Conversion en cours…';
+      progressCurrent.textContent = 'Préparation du lot en cours…';
+      clearCurrentFileCard();
+    }
+
+    function updateResultGroupState() {
+      const activeTotal = activeList.childElementCount;
+      const successTotal = successList.childElementCount;
+      const errorTotal = errorList.childElementCount;
+      const allDoneTotal = successTotal + errorTotal;
+      const totalOutputSize = Array.from(successList.children).reduce((sum, row) => {
+        return sum + Number(row.dataset.resultSize || 0);
+      }, 0);
+
+      activeCount.textContent = String(activeTotal);
+      successCount.textContent = String(successTotal);
+      errorCount.textContent = String(errorTotal);
+
+      activeGroup.classList.toggle('hidden', activeTotal === 0);
+      successGroup.classList.toggle('hidden', successTotal === 0);
+      errorGroup.classList.toggle('hidden', errorTotal === 0);
+      downloadAllWrap.classList.toggle('hidden', successTotal < 2);
+      resultOverview.classList.toggle('hidden', activeTotal + allDoneTotal === 0);
+      overviewSuccesses.textContent = String(successTotal);
+      overviewErrors.textContent = String(errorTotal);
+      overviewOutputSize.textContent = formatSize(totalOutputSize);
+      updateWorkflowState();
+    }
+
+    function announceError(message) {
+      errorLiveRegion.textContent = '';
+      requestAnimationFrame(() => {
+        errorLiveRegion.textContent = message;
+      });
+    }
+
+    function formatErrorMessage(message) {
+      const raw = (message || '').trim();
+      if (!raw) return 'Conversion impossible pour ce fichier. Réessayez avec une autre image.';
+
+      if (raw.startsWith('Format de fichier invalide:')) {
+        const ext = raw.split(':').pop().trim();
+        return `Format refusé (${ext}). Ajoutez une image prise en charge.`;
+      }
+
+      if (raw.includes('Trop de fichiers')) {
+        return 'Trop de fichiers (max 20). Retirez-en quelques-uns puis relancez.';
+      }
+
+      if (raw.includes('Fichier trop volumineux')) {
+        return 'Fichier trop volumineux (max 100 Mo). Réduisez sa taille ou choisissez un autre fichier.';
+      }
+
+      if (raw.includes('Aucun fichier uploadé')) {
+        return 'Aucun fichier valide à convertir. Vérifiez les fichiers sélectionnés.';
+      }
+
+      if (raw.includes('Format de sortie invalide')) {
+        return 'Format de sortie invalide. Sélectionnez JPEG, PNG, WebP ou AVIF.';
+      }
+
+      if (raw.includes('Conversion HEIC échouée')) {
+        return 'Conversion HEIC impossible pour ce fichier. Essayez un autre fichier ou une sortie JPEG.';
+      }
+
+      if (raw.startsWith('Erreur réseau:')) {
+        return raw;
+      }
+
+      return `Conversion impossible pour ce fichier. ${raw}`;
+    }
+
+    function updateDropZoneState() {
+      const fileCount = selectedFiles.length;
+      const readyText = `${fileCount} fichier${fileCount > 1 ? 's' : ''} prêt${fileCount > 1 ? 's' : ''}`;
+
+      if (isConverting) {
+        dropZoneTitle.textContent = 'Conversion en cours';
+        dropZoneText.textContent = 'Le lot est verrouillé jusqu’à la fin du traitement.';
+        dropZone.classList.add('is-loaded');
+        return;
+      }
+
+      if (fileCount === 0) {
+        dropZoneTitle.textContent = 'Déposez vos images ici';
+        dropZoneText.textContent = 'ou cliquez pour parcourir. 20 fichiers max, 100 Mo par fichier.';
+        dropZone.classList.remove('is-loaded');
+        return;
+      }
+
+      dropZoneTitle.textContent = readyText;
+      dropZoneText.textContent = 'Ajoutez d’autres fichiers ou passez à l’étape 2 pour ajuster la sortie.';
+      dropZone.classList.add('is-loaded');
+    }
+
+    function setFlowStatus(node, text, tone) {
+      node.textContent = text;
+      node.classList.remove('is-idle', 'is-info', 'is-success', 'is-error', 'is-mixed');
+      node.classList.add(`is-${tone}`);
+    }
+
+    function updateWorkflowState() {
+      const hasFiles = selectedFiles.length > 0;
+      const successTotal = successList.childElementCount;
+      const errorTotal = errorList.childElementCount;
+      const hasResults = successTotal + errorTotal > 0;
+      const sliderState = getSliderState();
+      let outputState = { text: 'En attente', tone: 'idle' };
+
+      if (isConverting) {
+        outputState = { text: 'Traitement', tone: 'info' };
+      } else if (successTotal > 0 && errorTotal > 0) {
+        outputState = { text: `${successTotal} ok · ${errorTotal} err`, tone: 'mixed' };
+      } else if (successTotal > 0) {
+        outputState = { text: `${successTotal} succès`, tone: 'success' };
+      } else if (errorTotal > 0) {
+        outputState = { text: `${errorTotal} erreur${errorTotal > 1 ? 's' : ''}`, tone: 'error' };
+      }
+
+      setFlowStatus(
+        importStatus,
+        hasFiles ? `${selectedFiles.length} fichier${selectedFiles.length > 1 ? 's' : ''}` : 'Aucun fichier',
+        hasFiles ? (isConverting ? 'info' : 'success') : 'idle'
+      );
+      setFlowStatus(
+        settingsStatus,
+        hasFiles
+          ? (isConverting ? `${formatOutputName(formatSelect.value)} verrouillé` : `${formatOutputName(formatSelect.value)} · ${sliderState.displayValue}`)
+          : 'En attente',
+        hasFiles ? 'info' : 'idle'
+      );
+      setFlowStatus(outputStatus, outputState.text, outputState.tone);
+
+      importPanel.classList.toggle('is-active', !hasFiles || isConverting);
+      settingsPanel.classList.toggle('is-active', hasFiles && !isConverting);
+      outputPanel.classList.toggle('is-active', isConverting || hasResults);
+
+      settingsPlaceholder.classList.toggle('hidden', hasFiles);
+      resultsPlaceholder.classList.toggle('hidden', isConverting || hasResults);
+      updateDropZoneState();
+    }
+
     function syncControls() {
       const hasFiles = selectedFiles.length > 0;
       dropZone.setAttribute('aria-disabled', isConverting ? 'true' : 'false');
       dropZone.setAttribute('aria-busy', isConverting ? 'true' : 'false');
+      dropZone.classList.toggle('is-disabled', isConverting);
       fileInput.disabled = isConverting;
       formatSelect.disabled = isConverting || !hasFiles;
       qualityRange.disabled = isConverting || !hasFiles;
       convertBtn.disabled = isConverting || !hasFiles;
       resetBtn.disabled = isConverting;
       downloadAllBtn.disabled = isConverting;
+      conversionBanner.classList.toggle('hidden', !isConverting);
+      batchSummary.classList.toggle('hidden', !hasFiles);
+      updateWorkflowState();
     }
 
     function addFiles(newFiles) {
@@ -612,7 +1455,10 @@
         fileQueue.classList.add('hidden');
         settingsBar.classList.add('hidden');
       }
+      resetProgress();
       resultsSection.classList.add('hidden');
+      clearResults();
+      updateBatchSummary();
       syncControls();
     }
 
@@ -620,10 +1466,14 @@
       if (isConverting) return;
       selectedFiles.splice(index, 1);
       renderFileList();
+      resetProgress();
+      resultsSection.classList.add('hidden');
+      clearResults();
       if (selectedFiles.length === 0) {
         fileQueue.classList.add('hidden');
         settingsBar.classList.add('hidden');
       }
+      updateBatchSummary();
       syncControls();
     }
 
@@ -635,6 +1485,15 @@
       const ext = getFileExt(file);
       const type = (file.type || '').toLowerCase();
       return ext === 'heic' || ext === 'heif' || ext === 'heicf' || type.includes('heic') || type.includes('heif');
+    }
+
+    function loadImageDimensions(url) {
+      return new Promise((resolve) => {
+        const img = new Image();
+        img.onload = () => resolve({ width: img.naturalWidth, height: img.naturalHeight });
+        img.onerror = () => resolve({ width: 0, height: 0 });
+        img.src = url;
+      });
     }
 
     function loadHeic2any() {
@@ -670,11 +1529,13 @@
       return heic2anyLoadPromise;
     }
 
-    async function createPreviewUrl(file) {
+    async function createPreviewData(file) {
+      let previewUrl = '';
+
       if (isHeicLike(file)) {
         try {
           await loadHeic2any();
-          if (typeof window.heic2any !== 'function') return '';
+          if (typeof window.heic2any !== 'function') return { url: '', width: 0, height: 0 };
           const converted = await window.heic2any({
             blob: file,
             toType: 'image/jpeg',
@@ -682,21 +1543,32 @@
           });
           const previewBlob = Array.isArray(converted) ? converted[0] : converted;
           if (previewBlob instanceof Blob) {
-            return URL.createObjectURL(previewBlob);
+            previewUrl = URL.createObjectURL(previewBlob);
           }
-          return '';
         } catch (err) {
           console.warn('Preview HEIC impossible:', file.name, err);
-          return '';
+          return { url: '', width: 0, height: 0 };
+        }
+      } else {
+        try {
+          previewUrl = URL.createObjectURL(file);
+        } catch (err) {
+          console.warn('Preview impossible:', file.name, err);
+          return { url: '', width: 0, height: 0 };
         }
       }
 
-      try {
-        return URL.createObjectURL(file);
-      } catch (err) {
-        console.warn('Preview impossible:', file.name, err);
-        return '';
+      const cached = fileDimensionCache.get(fileCacheKey(file));
+      if (cached) {
+        return { url: previewUrl, width: cached.width, height: cached.height };
       }
+
+      const dimensions = await loadImageDimensions(previewUrl);
+      if (dimensions.width > 0 && dimensions.height > 0) {
+        fileDimensionCache.set(fileCacheKey(file), dimensions);
+      }
+
+      return { url: previewUrl, width: dimensions.width, height: dimensions.height };
     }
 
     async function renderFileList() {
@@ -708,15 +1580,26 @@
 
       selectedFiles.forEach((file, i) => {
         const li = createEl('li', 'file-item');
+        const main = createEl('div', 'file-main');
         const thumb = createEl('div', 'file-thumb');
         const info = createEl('span', 'file-info');
-        const name = createEl('span', 'name', getFileExt(file).toUpperCase());
-        const meta = createEl('span', 'meta', formatSize(file.size));
+        const top = createEl('div', 'file-top');
+        const ext = createEl('span', 'file-ext', getFileExt(file).toUpperCase());
+        const name = createEl('span', 'name', file.name);
+        const metaRow = createEl('div', 'file-meta-row');
+        const sizeMeta = createEl('span', 'meta-pill', formatSize(file.size));
+        const typeMeta = createEl('span', 'meta-pill', getFileExt(file).toUpperCase());
+        const dimMeta = createEl('span', 'meta-pill hidden');
         const removeBtn = createEl('button');
 
-        info.appendChild(name);
-        info.appendChild(document.createTextNode(` ${file.name} `));
-        info.appendChild(meta);
+        top.appendChild(ext);
+        top.appendChild(name);
+
+        metaRow.appendChild(sizeMeta);
+        metaRow.appendChild(typeMeta);
+
+        info.appendChild(top);
+        info.appendChild(metaRow);
 
         removeBtn.type = 'button';
         removeBtn.setAttribute('aria-label', 'Supprimer');
@@ -725,31 +1608,41 @@
         removeBtn.disabled = isConverting;
         removeBtn.onclick = () => removeFile(i);
 
-        li.appendChild(thumb);
-        li.appendChild(info);
+        main.appendChild(thumb);
+        main.appendChild(info);
+
+        li.appendChild(main);
         li.appendChild(removeBtn);
         fileList.appendChild(li);
-        rows.push({ file, thumbEl: thumb });
+        rows.push({ file, thumbEl: thumb, dimEl: dimMeta, metaRow });
       });
 
       for (const row of rows) {
-        const thumbUrl = await createPreviewUrl(row.file);
+        const preview = await createPreviewData(row.file);
         if (currentRenderToken !== renderFileListToken) {
-          if (thumbUrl) URL.revokeObjectURL(thumbUrl);
+          if (preview.url) URL.revokeObjectURL(preview.url);
           return;
         }
-        if (!thumbUrl || !row.thumbEl) continue;
+        if (!preview.url || !row.thumbEl) continue;
 
-        filePreviewUrls.push(thumbUrl);
+        filePreviewUrls.push(preview.url);
         const img = document.createElement('img');
-        img.src = thumbUrl;
+        img.src = preview.url;
         img.alt = '';
         img.onerror = () => {
           row.thumbEl.innerHTML = '';
         };
         row.thumbEl.innerHTML = '';
         row.thumbEl.appendChild(img);
+
+        if (preview.width && preview.height) {
+          row.dimEl.textContent = `${preview.width}×${preview.height}`;
+          row.dimEl.classList.remove('hidden');
+          row.metaRow.appendChild(row.dimEl);
+        }
       }
+
+      updateBatchSummary();
     }
 
     function formatSize(bytes) {
@@ -789,7 +1682,11 @@
       }
 
       if (typeof rawText === 'string' && rawText.trim()) {
-        return rawText.trim();
+        const compact = rawText.trim();
+        if (compact.startsWith('<!DOCTYPE') || compact.includes('<html')) {
+          return `Erreur serveur (${res.status})`;
+        }
+        return compact;
       }
 
       return `Erreur serveur (${res.status})`;
@@ -827,7 +1724,8 @@
       e.target.value = '';
     });
 
-    qualityRange.addEventListener('input', () => { qualityValue.textContent = qualityRange.value; });
+    formatSelect.addEventListener('change', updateSettingsCopy);
+    qualityRange.addEventListener('input', updateSettingsCopy);
 
     resetBtn.addEventListener('click', resetAll);
 
@@ -846,20 +1744,25 @@
 
     function setProgressComplete() {
       progressBar.style.width = '100%';
-      progressLabel.textContent = 'Terminé';
+      progressLabel.textContent = 'Traitement terminé';
+      progressCurrent.textContent = 'Le lot est prêt à être téléchargé.';
+      clearCurrentFileCard();
     }
 
-    function setProgress(current, total) {
+    function setProgress(current, total, currentFileName = '') {
       const p = total ? Math.round((current / total) * 100) : 0;
       progressBar.style.width = p + '%';
-      progressLabel.textContent = `Conversion ${current}/${total}…`;
+      progressLabel.textContent = `Traitement ${current}/${total}`;
+      progressCurrent.textContent = currentFileName
+        ? `Fichier en cours : ${currentFileName}`
+        : 'Préparation du lot en cours…';
     }
 
     function buildPendingResultRow(fileName) {
       const row = createEl('div', 'result-item pending');
       const info = createEl('span');
       const name = createEl('span', 'name', fileName);
-      const status = createEl('span', 'status-msg msg', 'En attente');
+      const status = createEl('span', 'status-msg msg', 'À traiter');
 
       info.appendChild(name);
       info.appendChild(document.createTextNode(' '));
@@ -892,21 +1795,82 @@
       actions.appendChild(viewBtn);
       actions.appendChild(downloadBtn);
 
+      row.dataset.resultSize = String(result.size || 0);
       row.replaceChildren(info, actions);
     }
 
     function setErrorResultRow(row, fileName, message) {
       const info = createEl('span');
       const name = createEl('span', 'name', fileName);
-      const msg = createEl('span', 'msg', message);
+      const msg = createEl('span', 'msg', formatErrorMessage(message));
 
       row.className = 'result-item error';
+      row.dataset.resultSize = '0';
 
       info.appendChild(name);
       info.appendChild(document.createTextNode(' '));
       info.appendChild(msg);
 
       row.replaceChildren(info);
+    }
+
+    function clearCurrentFileCard() {
+      currentFileCardToken += 1;
+      if (currentFilePreviewUrl) {
+        URL.revokeObjectURL(currentFilePreviewUrl);
+        currentFilePreviewUrl = '';
+      }
+      currentFileThumb.textContent = 'IMG';
+      currentFileThumb.innerHTML = 'IMG';
+      currentFileName.textContent = 'Préparation…';
+      currentFileMeta.textContent = 'Analyse des fichiers sélectionnés';
+      currentFileCard.classList.add('hidden');
+    }
+
+    async function updateCurrentFileCard(file) {
+      const token = ++currentFileCardToken;
+
+      if (currentFilePreviewUrl) {
+        URL.revokeObjectURL(currentFilePreviewUrl);
+        currentFilePreviewUrl = '';
+      }
+
+      const ext = getFileExt(file).toUpperCase();
+      const cached = fileDimensionCache.get(fileCacheKey(file));
+      currentFileCard.classList.remove('hidden');
+      currentFileThumb.textContent = ext || 'IMG';
+      currentFileName.textContent = file.name;
+      currentFileMeta.textContent = [
+        ext || 'IMAGE',
+        formatSize(file.size),
+        cached && cached.width && cached.height ? `${cached.width}×${cached.height}` : null
+      ].filter(Boolean).join(' · ');
+
+      const preview = await createPreviewData(file);
+      if (token !== currentFileCardToken) {
+        if (preview.url) URL.revokeObjectURL(preview.url);
+        return;
+      }
+
+      if (preview.width && preview.height) {
+        currentFileMeta.textContent = [
+          ext || 'IMAGE',
+          formatSize(file.size),
+          `${preview.width}×${preview.height}`
+        ].join(' · ');
+      }
+
+      if (preview.url) {
+        currentFilePreviewUrl = preview.url;
+        const img = document.createElement('img');
+        img.src = preview.url;
+        img.alt = '';
+        img.onerror = () => {
+          currentFileThumb.textContent = ext || 'IMG';
+        };
+        currentFileThumb.innerHTML = '';
+        currentFileThumb.appendChild(img);
+      }
     }
 
     convertBtn.addEventListener('click', async () => {
@@ -920,10 +1884,9 @@
         progressSection.classList.remove('hidden');
         progressBar.style.width = '0%';
         progressLabel.textContent = 'Conversion en cours…';
+        progressCurrent.textContent = 'Préparation du lot en cours…';
         resultsSection.classList.remove('hidden');
-        resultsList.innerHTML = '';
-        downloadAllWrap.classList.add('hidden');
-        downloadAllBtn.onclick = null;
+        clearResults();
 
         const filesToConvert = selectedFiles.slice();
         const total = filesToConvert.length;
@@ -933,16 +1896,18 @@
         filesToConvert.forEach((file, i) => {
           const row = buildPendingResultRow(file.name);
           row.dataset.index = i;
-          resultsList.appendChild(row);
+          activeList.appendChild(row);
           rows.push(row);
         });
+        updateResultGroupState();
 
         for (let i = 0; i < filesToConvert.length; i++) {
           const file = filesToConvert[i];
           const row = rows[i];
           row.className = 'result-item converting';
           row.querySelector('.status-msg').textContent = 'Conversion en cours…';
-          setProgress(i, total);
+          setProgress(i, total, file.name);
+          await updateCurrentFileCard(file);
 
           const formData = new FormData();
           formData.append('images', file);
@@ -956,6 +1921,9 @@
 
             if (!res.ok) {
               setErrorResultRow(row, file.name, getResponseErrorMessage(res, data, parsed.text));
+              errorList.appendChild(row);
+              announceError(row.querySelector('.msg').textContent);
+              updateResultGroupState();
               setProgress(i + 1, total);
               continue;
             }
@@ -965,15 +1933,22 @@
 
             if (r) {
               setSuccessResultRow(row, r);
+              successList.appendChild(row);
               successes.push({ url: r.url, name: r.downloadName });
             } else {
               setErrorResultRow(row, file.name, err ? err.error : 'Erreur inconnue');
+              errorList.appendChild(row);
+              announceError(row.querySelector('.msg').textContent);
             }
+            updateResultGroupState();
           } catch (err) {
             setErrorResultRow(row, file.name, `Erreur réseau: ${err.message}`);
+            errorList.appendChild(row);
+            announceError(row.querySelector('.msg').textContent);
+            updateResultGroupState();
           }
 
-          setProgress(i + 1, total);
+          setProgress(i + 1, total, i + 1 < total ? filesToConvert[i + 1].name : '');
         }
 
         setProgressComplete();
@@ -994,9 +1969,12 @@
         isConverting = false;
         syncControls();
         renderFileList();
+        updateResultGroupState();
       }
     });
 
+    updateSettingsCopy();
+    updateWorkflowState();
     syncControls();
   </script>
 </body>

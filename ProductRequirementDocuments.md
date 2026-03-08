@@ -1,5 +1,5 @@
 # PRD — ABCLIV · Convertisseur d'images web
-**Version** : 1.6  
+**Version** : 1.7  
 **Date** : 2026-03-08  
 **Statut** : En cours de développement  
 **Owner** : À définir
@@ -84,6 +84,7 @@ image-converter/
 ├── Dockerfile
 ├── docker-compose.yml
 ├── package.json
+├── verify_conversions.js  ← Script local de vérification de la matrice de conversions
 ├── server.js          ← Backend (fichier unique, pas de split)
 ├── ProductRequirementDocuments.md  ← PRD
 ├── README.md
@@ -156,18 +157,25 @@ Autres → ImageMagick directement → output
 | Composant | Description |
 |---|---|
 | Header | Image **logo.png** (public/), hauteur 4rem ; texte **« Image converter »** en Arial 2.25rem, couleur **`#EE743C`** ; description à droite ; bouton **Tout réinitialiser** (reset UI + appel `POST /api/cleanup/all` pour vider `uploads/` et `converted/`) |
+| Workflow | Interface organisée en **3 panneaux** superposés : **Importer**, **Régler**, **Télécharger** ; panneau actif mis en avant par bordure/ombre accent |
 | Badges formats | Ligne de badges des formats supportés (HEIC en jaune accent) |
 | Drop zone | Zone centrale avec icône, titre, sous-titre ; accessible au clavier via **Entrée** / **Espace** |
-| File queue | Liste des fichiers sélectionnés : **miniature** (thumbnail) par image, extension, nom, taille, bouton suppression. Formats classiques via `URL.createObjectURL`; HEIC via preview client `heic2any` (fallback vide si échec) |
-| Settings bar | Apparaît après sélection de fichiers : format + qualité + bouton Convertir ; contrôles verrouillés pendant la conversion |
-| Progress section | Barre de progression réelle (Conversion 1/N…, 2/N…) ; statut **par image** : En attente → Conversion en cours… → Converti / Erreur |
-| Results section | Liste des résultats succès/erreur ; pour chaque succès : bouton **Visualiser** (nouvel onglet) + bouton **Télécharger** ; "Tout télécharger" si ≥ 2 succès |
+| File queue | Liste des fichiers sélectionnés : **miniature** (thumbnail) par image, extension, nom, taille, dimensions si connues, bouton suppression. Formats classiques via `URL.createObjectURL`; HEIC via preview client `heic2any` (fallback vide si échec) |
+| Settings bar | Apparaît après sélection de fichiers : format + curseur **Qualité / Résolution** contextuel + aide textuelle + bouton Convertir ; résumé de lot (nombre de fichiers, taille totale, format cible, réglage courant) ; contrôles verrouillés pendant la conversion |
+| Progress section | Carte du **fichier en cours** + barre de progression réelle ; statut **par image** : À traiter → Conversion en cours… → Converti / Erreur |
+| Results section | Synthèse du lot (réussites, erreurs, taille générée) + groupes **Traitement en cours**, **Convertis**, **Erreurs** ; pour chaque succès : bouton **Visualiser** (nouvel onglet) + bouton **Télécharger** ; "Tout télécharger" si ≥ 2 succès |
 | Footer | Mention locale + libs utilisées |
 
 ### 3.9 Observabilité et santé
 - Endpoint `GET /health` retournant `{ "status": "ok", "version": "1.0" }`
 - Logs structurés **JSON** sur stdout/stderr (startup, requêtes HTTP, erreurs, nettoyages)
 - Image Docker avec `HEALTHCHECK` basé sur `GET /health`
+
+### 3.10 Vérification locale
+- Script manuel `verify_conversions.js` à la racine, exécutable via `npm run verify:conversions`
+- Démarre l’application sur un port dédié, génère des images de test temporaires, puis valide la matrice de conversions des formats d’entrée/sortie supportés
+- Vérifie aussi le **téléchargement** des fichiers convertis et la conservation des noms UTF-8 accentués côté `downloadName`
+- Outil de maintenance locale uniquement ; **ce n’est pas** une suite de tests automatisés intégrée au projet ni une CI
 
 ---
 
@@ -201,6 +209,7 @@ Grille CSS via `body::before` avec `background-image` double gradient, `backgrou
 - `@keyframes slideIn` : apparition des file-items et result-items (translateY -8px → 0, opacity 0 → 1, 0.2s)
 - Transition hover drop-zone : scale, border-color, background
 - Progress bar : transition width 0.3s ease ; progression réelle (conversion fichier par fichier)
+- Panneau de workflow actif : bordure accentuée + ombre légère
 
 ---
 
@@ -407,5 +416,6 @@ Ces décisions sont **intentionnellement laissées en suspens**. L'IA doit les p
 | 1.4 | 2026-02-25 | **Preview HEIC** côté client via `heic2any` local (`public/heic2any.min.js`, chargement à la demande). **Tout réinitialiser** déclenche aussi `POST /api/cleanup/all`. **Téléchargement** : correction des noms de fichiers accentués (UTF-8) dans `originalName` / `downloadName`. Section API mise à jour avec routes cleanup documentées. |
 | 1.5 | 2026-02-25 | **Docker** : `libheif` installé via **Debian bookworm-backports** (`libheif1` + `libheif-examples`) pour améliorer la compatibilité HEIC. **Compose** : port publié `3005:3000` et rattachement au réseau Docker externe `proxy` (intégration NPM/reverse proxy). **UI** : couleur du titre « Image converter » = `#EE743C`. |
 | 1.6 | 2026-03-08 | **API** : ajout de `GET /health`. **Logs** : logs JSON structurés sur stdout/stderr. **Upload** : rejet explicite des extensions invalides et erreurs 4xx documentées (`LIMIT_FILE_COUNT`, taille max). **UI** : drop zone accessible au clavier, verrouillage des contrôles pendant la conversion, parsing d'erreurs tolérant au non-JSON. **Docker** : ajout d'un `HEALTHCHECK` basé sur `/health`. |
+| 1.7 | 2026-03-08 | **UI/UX** : interface structurée en 3 panneaux (**Importer / Régler / Télécharger**), résumé de lot, libellés contextuels du curseur, file enrichie (dimensions), carte du fichier en cours, synthèse et groupement des résultats, microcopy harmonisée. **Tooling** : ajout du script local `verify_conversions.js` et de la commande `npm run verify:conversions` pour valider la matrice complète des conversions et des téléchargements. |
 
 *Toute modification de ce PRD doit être documentée avec la date et la version.*

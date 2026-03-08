@@ -4,7 +4,8 @@
   "description": "Convertisseur d'images web — HEIC, JPEG, PNG, WebP, AVIF",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "verify:conversions": "node verify_conversions.js"
   },
   "engines": {
     "node": ">=20"
